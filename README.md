@@ -2,7 +2,7 @@
 
 *Replaces BasslineAnalyser, which was the simple first iteration.*
 
-**AudioToMMP** is a WIP audio analysis and transcription tool designed to bridge the gap between raw audio files and LMMS. It uses digital signal processing (DSP) to break down mixed audio, detect pitches and rhythms, and translate them directly into actionable pattern files (`.xpt`), and full multi-track LMMS projects (`.mmp`) for LMMS. 
+**AudioToMMP** is a WIP audio analysis and transcription tool designed to bridge the gap between raw audio files and LMMS. It uses digital signal processing (DSP) to break down mixed audio, detect pitches and rhythms, and translate them directly into LMMS pattern files (`.xpt`), and full multi-track LMMS projects (`.mmp`). 
 
 ### Core Features
 
