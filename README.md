@@ -10,6 +10,12 @@
 * **Pattern Mode:** Click and drag a selection box over a specific part of the spectrogram to isolate an instrument, melody, or bassline. The app detects the exact MIDI notes or chords (using algorithms like YIN or Harmonic Product Spectrum) and maps them onto a 16-step or 32-step pattern grid based on the BPM. This grid can be exported as an LMMS `.xpt` pattern.
 * **DSP Source Separation:** A dedicated module to isolate or remove specific elements (like basslines or vocals) from the mix using cascaded, steep Biquad filters. You can play back the separated audio or save it to disk.
 * **Spectral Sampling:** Drag an area on the spectrogram (time × frequency) to apply a bandpass filter, isolating that exact sound, and export it as a ready-to-use `.wav` sample.
+* **Automation Editor:** An external editor to generate, manipulate, and inject complex automation data directly into LMMS `.mmp` projects. 
+  * **Algorithmic Macros:** Generate LFOs (Sine, Square, Triangle, Saw), ADSR envelopes, Random (Sample & Hold), and rhythmic gates.
+  * **Interactive Drawing:** Double-click to add or delete points, and drag them freely across the interactive canvas just like in LMMS.
+  * **Math Modifiers:** Smooth curves, Quantize Y (snap to grid), Humanise (jitter), Invert, and Scale Amplitude.
+  * **MIDI-to-CV Conversion:** Load an LMMS `.xpt` pattern and automatically convert the notes into stepped automation (Control Voltage) using highest note priority. 
+  * **Shape Presets:** Save and load custom automation shapes using the dedicated `.xpa` (XML Pattern Automation) file format.
 * **Visual Data:** Features detailed spectrogram and waveform visualisers to help you see exactly what you are extracting.
 
 ### Current State
