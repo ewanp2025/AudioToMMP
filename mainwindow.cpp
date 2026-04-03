@@ -49,11 +49,6 @@ float MainWindow::Biquad::process(float in) {
     return out;
 }
 
-
-
-
-
-
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
     setupUI();
@@ -420,16 +415,21 @@ void MainWindow::setupUI()
     m_btnLoadMmp = new QPushButton("1. Load .mmp Project");
     m_btnLoadMmp->setStyleSheet("font-weight: bold; padding: 5px;");
     m_lblLoadedMmp = new QLabel("No project loaded.");
+
+    m_lblProjectStats = new QLabel("<b>Project Stats:</b> N/A");
+    m_lblProjectStats->setStyleSheet("color: #555;");
+
     loadLayout->addWidget(m_btnLoadMmp);
     loadLayout->addWidget(m_lblLoadedMmp);
     loadLayout->addStretch();
+    loadLayout->addWidget(m_lblProjectStats);
     autoLayout->addLayout(loadLayout);
 
-    QSplitter *mainSplitter = new QSplitter(Qt::Vertical); // Splits Top (Editor) and Bottom (Viewer)
+    QSplitter *mainSplitter = new QSplitter(Qt::Vertical);
     autoLayout->addWidget(mainSplitter);
 
     QWidget *editorTopWidget = new QWidget();
-    QHBoxLayout *editorTopLayout = new QHBoxLayout(editorTopWidget); // RENAMED
+    QHBoxLayout *editorTopLayout = new QHBoxLayout(editorTopWidget);
 
 
     QWidget *editorControls = new QWidget();
@@ -448,6 +448,17 @@ void MainWindow::setupUI()
     m_comboInterpolation = new QComboBox();
     m_comboInterpolation->addItems({"0 - Discrete (Step)", "1 - Linear", "2 - Cubic Hermite (Smooth)"});
     m_comboInterpolation->setCurrentIndex(2);
+
+    m_checkSnapGrid = new QCheckBox("Snap to Grid");
+    m_checkSnapGrid->setChecked(true);
+
+    m_comboQuantizeX = new QComboBox();
+    m_comboQuantizeX->addItems({"1/4 (48 Ticks)", "1/8 (24 Ticks)", "1/16 (12 Ticks)", "1/32 (6 Ticks)"});
+    m_comboQuantizeX->setCurrentIndex(2); // Default to 1/16ths
+
+    lfoLayout->addWidget(m_checkSnapGrid, 7, 0);
+    lfoLayout->addWidget(m_comboQuantizeX, 7, 1);
+
 
     lfoLayout->addWidget(new QLabel("<b>1. Target Linking:</b>"), 0, 0, 1, 2);
     lfoLayout->addWidget(new QLabel("Track:"), 1, 0);
@@ -469,45 +480,96 @@ void MainWindow::setupUI()
     QGridLayout *genLayout = new QGridLayout();
 
     m_comboMacroType = new QComboBox();
-    m_comboMacroType->addItems({"LFO Oscillator", "ADSR Envelope", "Random (Sample & Hold)", "Rhythmic Gate (16ths)"});
+    m_comboMacroType->addItems({
+        "LFO Oscillator",
+        "ADSR Envelope",
+        "Random (Sample & Hold)",
+        "Rhythmic Gate (16ths)",
+        "Sidechain Pump (Ducking)", // NEW
+        "Tape Stop / Drop"          // NEW
+    });
 
     m_comboWaveform = new QComboBox();
     m_comboWaveform->addItems({"Sine", "Square", "Triangle", "Sawtooth Down", "Sawtooth Up"});
 
 
-    m_spinLfoFreq = new QDoubleSpinBox();
-    m_spinLfoFreq->setDecimals(1);
-    m_spinLfoFreq->setRange(1.0, 19200.0);
-    m_spinLfoFreq->setValue(192.0); // Default to 1 cycle per beat
-    m_spinLfoFreq->setSingleStep(24.0); // Step by 32nd notes for easy musical snapping
+    m_spinLfoFreqStart = new QDoubleSpinBox(); m_spinLfoFreqStart->setDecimals(1); m_spinLfoFreqStart->setRange(1.0, 19200.0); m_spinLfoFreqStart->setValue(192.0);
+    m_spinLfoFreqEnd = new QDoubleSpinBox(); m_spinLfoFreqEnd->setDecimals(1); m_spinLfoFreqEnd->setRange(1.0, 19200.0); m_spinLfoFreqEnd->setValue(192.0);
+
+    m_spinLfoFreqStart->setSingleStep(24.0);
+    m_spinLfoFreqEnd->setSingleStep(24.0);
 
     m_spinLfoPhase = new QDoubleSpinBox();
     m_spinLfoPhase->setRange(0.0, 360.0);
     m_spinLfoPhase->setValue(0.0);
     m_spinLfoPhase->setSuffix(" °");
 
-    m_spinLfoDepth = new QDoubleSpinBox(); m_spinLfoDepth->setRange(0.0, 2.0); m_spinLfoDepth->setValue(0.5);
-    m_spinLfoBaseValue = new QDoubleSpinBox(); m_spinLfoBaseValue->setRange(-1.0, 200.0); m_spinLfoBaseValue->setValue(0.5);
-    m_spinDataPoints = new QSpinBox(); m_spinDataPoints->setRange(2, 2000); m_spinDataPoints->setValue(64);
+    m_spinLfoDepthStart = new QDoubleSpinBox(); m_spinLfoDepthStart->setRange(0.0, 20000.0); m_spinLfoDepthStart->setValue(100.0);
+    m_spinLfoDepthEnd = new QDoubleSpinBox(); m_spinLfoDepthEnd->setRange(0.0, 20000.0); m_spinLfoDepthEnd->setValue(100.0);
+
+
+    m_spinLfoBaseValue = new QDoubleSpinBox();
+    m_spinLfoBaseValue->setRange(-20000.0, 20000.0);
+    m_spinLfoBaseValue->setValue(100.0);
+    m_spinSwing = new QDoubleSpinBox();
+    m_spinSwing->setRange(0.0, 100.0);
+    m_spinSwing->setValue(0.0);
+    m_spinSwing->setSuffix(" %");
+
+
+    m_spinTension = new QDoubleSpinBox();
+    m_spinTension->setRange(0.1, 10.0);
+    m_spinTension->setValue(1.0);
+    m_spinTension->setSingleStep(0.1);
+
+    m_spinDataPoints = new QSpinBox();
+    m_spinDataPoints->setRange(2, 2000);
+    m_spinDataPoints->setValue(64);
 
     genLayout->addWidget(new QLabel("Macro Engine:"), 0, 0); genLayout->addWidget(m_comboMacroType, 0, 1);
     genLayout->addWidget(new QLabel("LFO Waveform:"), 1, 0); genLayout->addWidget(m_comboWaveform, 1, 1);
 
 
-    genLayout->addWidget(new QLabel("Rate (Ticks/Cycle):"), 2, 0); genLayout->addWidget(m_spinLfoFreq, 2, 1);
+    QHBoxLayout *rateLayout = new QHBoxLayout();
+    rateLayout->addWidget(new QLabel("Start:")); rateLayout->addWidget(m_spinLfoFreqStart);
+    rateLayout->addWidget(new QLabel("End:")); rateLayout->addWidget(m_spinLfoFreqEnd);
+    genLayout->addWidget(new QLabel("Rate (Ticks/Cycle):"), 2, 0); genLayout->addLayout(rateLayout, 2, 1);
+
     genLayout->addWidget(new QLabel("Phase (Horiz Offset):"), 3, 0); genLayout->addWidget(m_spinLfoPhase, 3, 1);
 
-    genLayout->addWidget(new QLabel("Depth (Amplitude):"), 4, 0); genLayout->addWidget(m_spinLfoDepth, 4, 1);
+    QHBoxLayout *depthLayout = new QHBoxLayout();
+    depthLayout->addWidget(new QLabel("Start:")); depthLayout->addWidget(m_spinLfoDepthStart);
+    depthLayout->addWidget(new QLabel("End:")); depthLayout->addWidget(m_spinLfoDepthEnd);
+    genLayout->addWidget(new QLabel("Depth (Amplitude):"), 4, 0); genLayout->addLayout(depthLayout, 4, 1);
+
     genLayout->addWidget(new QLabel("Base (Vert Center):"), 5, 0); genLayout->addWidget(m_spinLfoBaseValue, 5, 1);
-    genLayout->addWidget(new QLabel("Data Points:"), 6, 0); genLayout->addWidget(m_spinDataPoints, 6, 1);
+    genLayout->addWidget(new QLabel("Swing / Groove:"), 6, 0);     genLayout->addWidget(m_spinSwing, 6, 1);
+    genLayout->addWidget(new QLabel("Tension (Exp/Log):"), 7, 0);  genLayout->addWidget(m_spinTension, 7, 1); // <--- NEW ROW 7
+    genLayout->addWidget(new QLabel("Data Points:"), 8, 0);        genLayout->addWidget(m_spinDataPoints, 8, 1); // <--- MOVED TO ROW 8
 
     controlLayout->addLayout(genLayout);
 
     m_btnGenerateLfo = new QPushButton("Generate LFO Shape");
+
+    m_comboBlendMode = new QComboBox();
+    m_comboBlendMode->addItems({"Replace", "Add (+)", "Subtract (-)", "Multiply (x)"});
+
+    QHBoxLayout *generateLayout = new QHBoxLayout();
+
+    generateLayout->addWidget(m_btnGenerateLfo);
+    generateLayout->addWidget(new QLabel("Blend:"));
+    generateLayout->addWidget(m_comboBlendMode);
+
+    controlLayout->addLayout(generateLayout);
+
+    m_btnExtractEnvelope = new QPushButton("Extract Audio Envelope (From Tab 1)");
+    m_btnExtractEnvelope->setStyleSheet("background-color: #D2691E; color: white; font-weight: bold;");
+
     m_btnReverseEditor = new QPushButton("Reverse Array (Flip Time)");
     m_btnClearEditor = new QPushButton("Clear ");
 
     controlLayout->addWidget(m_btnGenerateLfo);
+    controlLayout->addWidget(m_btnExtractEnvelope);
     controlLayout->addWidget(m_btnReverseEditor);
     controlLayout->addWidget(m_btnClearEditor);
 
@@ -527,7 +589,7 @@ void MainWindow::setupUI()
     QPushButton *btnLoadShape = new QPushButton("Load Shape (.xpa)");
 
     QPushButton *btnLoadXptCv = new QPushButton("Load Pattern as CV (.xpt)");
-    btnLoadXptCv->setStyleSheet("background-color: #2E8B57; color: white;"); // Make it green to stand out
+    btnLoadXptCv->setStyleSheet("background-color: #2E8B57; color: white;");
 
     QPushButton *btnScaleAmplitude = new QPushButton("Scale Y Amplitude");
 
@@ -554,16 +616,19 @@ void MainWindow::setupUI()
 
     controlLayout->addStretch();
 
-
-
-
     m_btnInjectMmp = new QPushButton("INJECT & SAVE AS .MMP");
     m_btnInjectMmp->setStyleSheet("background-color: #8B008B; color: white; font-weight: bold; padding: 15px; font-size: 14px;");
     m_btnInjectMmp->setEnabled(false);
     controlLayout->addWidget(m_btnInjectMmp);
 
-    editorTopLayout->addWidget(editorControls, 1);
 
+    QScrollArea *controlScrollArea = new QScrollArea();
+    controlScrollArea->setWidget(editorControls);
+    controlScrollArea->setWidgetResizable(true);
+    controlScrollArea->setFrameShape(QFrame::NoFrame);
+    controlScrollArea->setMinimumWidth(350);
+
+    editorTopLayout->addWidget(controlScrollArea, 1);
 
     m_plotEditor = new QCustomPlot();
     m_plotEditor->xAxis->setLabel("Time (Ticks)");
@@ -619,10 +684,29 @@ void MainWindow::setupUI()
     connect(m_btnInjectMmp, &QPushButton::clicked, this, &MainWindow::onInjectMmpClicked);
 
     connect(m_comboTracks, &QComboBox::currentIndexChanged, this, &MainWindow::onTrackSelectionChanged);
-    connect(m_spinLfoLengthTicks, &QSpinBox::valueChanged, this, &MainWindow::onEditorLengthChanged);
-    connect(m_comboInterpolation, &QComboBox::currentIndexChanged, this, &MainWindow::updateEditorPlot);
 
+    connect(m_comboTargetParam, &QComboBox::currentTextChanged, this, [this](const QString &text) {
+        if (text.startsWith("vol")) {
+            m_spinLfoBaseValue->setValue(100.0);
+            m_spinLfoDepthStart->setValue(100.0); m_spinLfoDepthEnd->setValue(100.0);
+        } else if (text.startsWith("pan")) {
+            m_spinLfoBaseValue->setValue(0.0);
+            m_spinLfoDepthStart->setValue(100.0); m_spinLfoDepthEnd->setValue(100.0);
+        } else if (text.startsWith("fcut")) {
+            m_spinLfoBaseValue->setValue(7000.0);
+            m_spinLfoDepthStart->setValue(7000.0); m_spinLfoDepthEnd->setValue(7000.0);
+        }
+    });
 
+    connect(m_comboMacroType, &QComboBox::currentIndexChanged, this, [this](){ onGenerateLfoClicked(); });
+    connect(m_spinLfoDepthStart, &QDoubleSpinBox::valueChanged, this, [this](){ onGenerateLfoClicked(); });
+    connect(m_spinLfoDepthEnd, &QDoubleSpinBox::valueChanged, this, [this](){ onGenerateLfoClicked(); });
+    connect(m_spinLfoFreqStart, &QDoubleSpinBox::valueChanged, this, [this](){ onGenerateLfoClicked(); });
+    connect(m_spinLfoFreqEnd, &QDoubleSpinBox::valueChanged, this, [this](){ onGenerateLfoClicked(); });
+    connect(m_spinLfoBaseValue, &QDoubleSpinBox::valueChanged, this, [this](){ onGenerateLfoClicked(); });
+    connect(m_spinLfoPhase, &QDoubleSpinBox::valueChanged, this, [this](){ onGenerateLfoClicked(); });
+    connect(m_btnExtractEnvelope, &QPushButton::clicked, this, &MainWindow::onExtractEnvelopeClicked);
+    connect(m_spinSwing, &QDoubleSpinBox::valueChanged, this, [this](){ onGenerateLfoClicked(); });
 
     m_mainTabs->addTab(m_tabAutomation, "4. Automation Macros");
 }
@@ -1816,7 +1900,7 @@ void MainWindow::onDeleteBandClicked()
 void MainWindow::updateBandVisuals()
 {
 
-    for (QCPItemRect *rect : m_bandVisualRects) {
+    for (QCPItemRect *rect : std::as_const(m_bandVisualRects)) {
         m_multiSpectrogramPlot->removeItem(rect);
     }
     m_bandVisualRects.clear();
@@ -2187,6 +2271,11 @@ void MainWindow::onLoadMmpClicked()
 
 void MainWindow::parseMmpFile(const QString &/*filePath*/)
 {
+    QDomElement head = m_mmpDocument.documentElement().firstChildElement("head");
+    if (!head.isNull() && head.hasAttribute("bpm")) {
+        QString bpm = head.attribute("bpm");
+        m_lblProjectStats->setText(QString("<b>Project Stats:</b> %1 BPM | 48 Ticks/Beat | 192 Ticks/Bar").arg(bpm));
+    }
     m_parsedTracks.clear();
     m_comboTracks->clear();
     m_existingAutomations.clear();
@@ -2300,19 +2389,22 @@ void MainWindow::onInjectMmpClicked()
     }
 
 
-    QString existingVal = nodeToMutate.attribute(paramKey, QString::number(m_spinLfoBaseValue->value()));
+    QDomElement targetChild = nodeToMutate.firstChildElement(paramKey);
 
+    if (!targetChild.isNull()) {
 
-    nodeToMutate.removeAttribute(paramKey);
+        targetChild.setAttribute("id", QString::number(newId));
+    } else {
+            QString existingVal = nodeToMutate.attribute(paramKey, QString::number(m_spinLfoBaseValue->value()));
+        nodeToMutate.removeAttribute(paramKey);
 
+        QDomElement newParamChild = m_mmpDocument.createElement(paramKey);
+        newParamChild.setAttribute("id", QString::number(newId));
+        newParamChild.setAttribute("value", existingVal);
+        if (pt.targetElement.tagName() == "xpressive") newParamChild.setAttribute("scale_type", "linear");
 
-    QDomElement newParamChild = m_mmpDocument.createElement(paramKey);
-    newParamChild.setAttribute("id", QString::number(newId));
-    newParamChild.setAttribute("value", existingVal);
-    if (pt.targetElement.tagName() == "xpressive") newParamChild.setAttribute("scale_type", "linear");
-
-    nodeToMutate.appendChild(newParamChild);
-
+        nodeToMutate.appendChild(newParamChild);
+    }
 
 
     QDomElement trackContainer = m_mmpDocument.documentElement().firstChildElement("song").firstChildElement("trackcontainer");
@@ -2339,8 +2431,15 @@ void MainWindow::onInjectMmpClicked()
 
     for (int i = 0; i < m_editorX.size(); ++i) {
         QDomElement timeElem = m_mmpDocument.createElement("time");
-        timeElem.setAttribute("pos", QString::number(m_editorX[i], 'f', 0)); // Ticks must be whole integers
-        timeElem.setAttribute("value", QString::number(m_editorY[i], 'f', 5));
+        timeElem.setAttribute("pos", QString::number(m_editorX[i], 'f', 0));
+
+
+        QString valString = QString::number(m_editorY[i], 'f', 5);
+
+
+        timeElem.setAttribute("value", valString);
+        timeElem.setAttribute("outValue", valString);
+
         autoPattern.appendChild(timeElem);
     }
 
@@ -2507,97 +2606,124 @@ void MainWindow::onClearEditorClicked()
 
 void MainWindow::onGenerateLfoClicked()
 {
-    m_editorX.clear();
-    m_editorY.clear();
+    int blendMode = m_comboBlendMode->currentIndex();
+    int points = m_spinDataPoints->value();
+    if (points < 2) points = 2;
+
+    bool isReplacing = (blendMode == 0 || m_editorX.isEmpty() || m_editorX.size() != points);
+
+    if (isReplacing) {
+        m_editorX.clear();
+        m_editorY.clear();
+    }
 
     int lenTicks = m_spinLfoLengthTicks->value();
-    int points = m_spinDataPoints->value();
 
+    double rateStart = m_spinLfoFreqStart->value();
+    double rateEnd = m_spinLfoFreqEnd->value();
+    double depthStart = m_spinLfoDepthStart->value();
+    double depthEnd = m_spinLfoDepthEnd->value();
 
-    double ticksPerCycle = m_spinLfoFreq->value();
-    double freq = 1.0 / ticksPerCycle; // Invert it back to cycles/tick for the engine
-    // --------------------
+    double freqStart = 1.0 / rateStart;
+    double freqEnd = 1.0 / rateEnd;
 
-    double phaseOffset = m_spinLfoPhase->value() / 360.0; // 0.0 to 1.0 phase shift
-    double depth = m_spinLfoDepth->value();
+    double currentPhase = m_spinLfoPhase->value() / 360.0;
     double baseVal = m_spinLfoBaseValue->value();
+
+    double swingAmt = m_spinSwing->value() / 100.0;
+    double swingMid = 0.5 + (swingAmt * 0.25);
+    double last_virtual_t = 0.0;
 
     int macroType = m_comboMacroType->currentIndex();
     int waveType = m_comboWaveform->currentIndex();
 
-    if (points < 2) points = 2;
     double stepSize = (double)lenTicks / (points - 1);
 
     for (int i = 0; i < points; ++i) {
         double t = i * stepSize;
+
+        double eighthNoteTicks = 24.0;
+        double cyclePos = std::fmod(t, eighthNoteTicks) / eighthNoteTicks;
+        double virtualCyclePos = 0.0;
+
+        if (cyclePos < swingMid) {
+            virtualCyclePos = 0.5 * (cyclePos / swingMid);
+        } else {
+            virtualCyclePos = 0.5 + 0.5 * ((cyclePos - swingMid) / (1.0 - swingMid));
+        }
+
+        double virtual_t = std::floor(t / eighthNoteTicks) * eighthNoteTicks + (virtualCyclePos * eighthNoteTicks);
+
+        double t_norm = (lenTicks > 0) ? virtual_t / lenTicks : 0.0;
         double val = 0.0;
 
-        if (macroType == 0) {
+        double currentDepth = depthStart + (depthEnd - depthStart) * t_norm;
+        double currentFreq = freqStart + (freqEnd - freqStart) * t_norm;
 
-            double p = (t * freq) + phaseOffset;
-            double p_mod = p - std::floor(p);
-
-            if (waveType == 0) { // Sine
-                val = std::sin(p_mod * 2.0 * M_PI);
-            } else if (waveType == 1) { // Square
-                val = (p_mod < 0.5) ? 1.0 : -1.0;
-            } else if (waveType == 2) { // Triangle
-                val = 4.0 * std::abs(p_mod - 0.5) - 1.0;
-            } else if (waveType == 3) { // Sawtooth Down
-                val = 1.0 - 2.0 * p_mod;
-            } else if (waveType == 4) { // Sawtooth Up
-                val = 2.0 * p_mod - 1.0;
-            }
-
-            val = baseVal + (val * depth);
+        if (i > 0) {
+            double delta_v_t = virtual_t - last_virtual_t;
+            currentPhase += currentFreq * delta_v_t;
         }
-        else if (macroType == 1) {
+        last_virtual_t = virtual_t;
 
-
+        if (macroType == 0) { // LFO
+            double p_mod = currentPhase - std::floor(currentPhase);
+            if (waveType == 0) val = std::sin(p_mod * 2.0 * M_PI);
+            else if (waveType == 1) val = (p_mod < 0.5) ? 1.0 : -1.0;
+            else if (waveType == 2) val = 4.0 * std::abs(p_mod - 0.5) - 1.0;
+            else if (waveType == 3) val = 1.0 - 2.0 * p_mod;
+            else if (waveType == 4) val = 2.0 * p_mod - 1.0;
+            val = baseVal + (val * currentDepth);
+        }
+        else if (macroType == 1) { // ADSR
             double attT = lenTicks * 0.20;
             double decT = lenTicks * 0.20;
             double relT = lenTicks * 0.20;
             double susT = lenTicks - attT - decT - relT;
-            double susLvl = 0.5; // Sustain hangs at 50% of the depth
+            double susLvl = 0.5;
 
-            if (t < attT) {
-                val = t / attT; // Ramp up 0 to 1
-            } else if (t < attT + decT) {
-                val = 1.0 - ((t - attT) / decT) * (1.0 - susLvl); // Decay down to Sustain
-            } else if (t < attT + decT + susT) {
-                val = susLvl; // Hold Sustain
-            } else {
-                val = susLvl * (1.0 - ((t - (attT + decT + susT)) / relT)); // Release to 0
-            }
+            if (virtual_t < attT) val = virtual_t / attT;
+            else if (virtual_t < attT + decT) val = 1.0 - ((virtual_t - attT) / decT) * (1.0 - susLvl);
+            else if (virtual_t < attT + decT + susT) val = susLvl;
+            else val = susLvl * (1.0 - ((virtual_t - (attT + decT + susT)) / relT));
 
-            val = baseVal + (val * depth * 2.0 - depth);
+            val = baseVal + (val * currentDepth * 2.0 - currentDepth);
         }
         else if (macroType == 2) {
-
-            double ticksPerHold = ticksPerCycle;
-            if (ticksPerHold <= 0) ticksPerHold = 1.0;
-
-            int holdIndex = (int)(t / ticksPerHold);
-
+            double ticksPerHold = currentFreq > 0 ? (1.0 / currentFreq) : 1.0;
+            int holdIndex = (int)(virtual_t / ticksPerHold);
             QRandomGenerator rand(holdIndex + 9999);
-            val = rand.generateDouble() * 2.0 - 1.0;
-
-            val = baseVal + (val * depth);
+            val = baseVal + ((rand.generateDouble() * 2.0 - 1.0) * currentDepth);
         }
         else if (macroType == 3) {
-
-            int sixteenth = (int)(t / 48.0);
-            val = (sixteenth % 2 == 0) ? 1.0 : -1.0; // On / Off
-
-            val = baseVal + (val * depth);
+            int sixteenth = (int)(virtual_t / 12.0);
+            val = baseVal + (((sixteenth % 2 == 0) ? 1.0 : -1.0) * currentDepth);
+        }
+        else if (macroType == 4) {
+            double cyclePhase = std::fmod(virtual_t, rateStart) / rateStart;
+            double duckCurve = std::pow(cyclePhase, 0.4);
+            val = baseVal - currentDepth + (currentDepth * duckCurve);
+        }
+        else if (macroType == 5) {
+            double drop = std::pow(t_norm, 3.0);
+            val = baseVal - (drop * currentDepth);
         }
 
-        m_editorX.append(t);
-        m_editorY.append(val);
+
+        if (isReplacing) {
+            m_editorX.append(t);
+            m_editorY.append(val);
+        } else {
+            if (blendMode == 1) m_editorY[i] += val;
+            else if (blendMode == 2) m_editorY[i] -= val;
+            else if (blendMode == 3) m_editorY[i] *= (val / 100.0);
+        }
     }
 
     if ((macroType == 0 && waveType == 1) || macroType == 3) {
-        m_comboInterpolation->setCurrentIndex(0); // Set to Step
+        m_comboInterpolation->setCurrentIndex(0);
+    } else if (macroType == 4 || macroType == 5) {
+        m_comboInterpolation->setCurrentIndex(2);
     }
 
     updateEditorPlot();
@@ -2635,46 +2761,51 @@ void MainWindow::updateEditorPlot()
 
     m_plotEditor->replot();
     m_btnInjectMmp->setEnabled(m_parsedTracks.size() > 0);
-}
-
-void MainWindow::onEditorMousePress(QMouseEvent *event) {
-    if (m_editorX.isEmpty() || event->button() != Qt::LeftButton) return;
-
-    double x = m_plotEditor->xAxis->pixelToCoord(event->pos().x());
-    double y = m_plotEditor->yAxis->pixelToCoord(event->pos().y());
+}void MainWindow::onEditorMousePress(QMouseEvent *event) {
+    if (event->button() != Qt::LeftButton) return;
 
 
-    double minDistance = std::numeric_limits<double>::max();
-    int closestIndex = -1;
+    m_draggedPointIndex = -1;
+    double minDistance = 10.0;
 
     for (int i = 0; i < m_editorX.size(); ++i) {
-
         double px = m_plotEditor->xAxis->coordToPixel(m_editorX[i]);
         double py = m_plotEditor->yAxis->coordToPixel(m_editorY[i]);
         double dist = std::hypot(event->pos().x() - px, event->pos().y() - py);
 
-        if (dist < 10.0 && dist < minDistance) { // 10 pixel grab radius
+        if (dist < minDistance) {
             minDistance = dist;
-            closestIndex = i;
+            m_draggedPointIndex = i;
         }
     }
 
-    if (closestIndex != -1) {
-        m_draggedPointIndex = closestIndex;
-        m_plotEditor->setInteraction(QCP::iRangeDrag, false); // Disable panning while dragging
+
+    if (m_draggedPointIndex != -1) {
+        m_plotEditor->setInteraction(QCP::iRangeDrag, false);
     }
 }
-
 void MainWindow::onEditorMouseMove(QMouseEvent *event) {
     if (m_draggedPointIndex == -1) return;
 
     double newX = m_plotEditor->xAxis->pixelToCoord(event->pos().x());
     double newY = m_plotEditor->yAxis->pixelToCoord(event->pos().y());
 
+
+    if (m_checkSnapGrid->isChecked()) {
+        double snapInterval = 12.0; // Default 1/16th
+        int qIndex = m_comboQuantizeX->currentIndex();
+        if (qIndex == 0) snapInterval = 48.0; // 1/4
+        else if (qIndex == 1) snapInterval = 24.0; // 1/8
+        else if (qIndex == 2) snapInterval = 12.0; // 1/16
+        else if (qIndex == 3) snapInterval = 6.0;  // 1/32
+
+        newX = std::round(newX / snapInterval) * snapInterval;
+    }
+
     if (m_draggedPointIndex > 0) {
-        newX = std::max(newX, m_editorX[m_draggedPointIndex - 1] + 1.0); // +1 tick min spacing
+        newX = std::max(newX, m_editorX[m_draggedPointIndex - 1] + 1.0);
     } else {
-        newX = std::max(newX, 0.0); // Don't go before 0
+        newX = std::max(newX, 0.0);
     }
 
     if (m_draggedPointIndex < m_editorX.size() - 1) {
@@ -2687,10 +2818,12 @@ void MainWindow::onEditorMouseMove(QMouseEvent *event) {
     updateEditorPlot();
 }
 
+
+
 void MainWindow::onEditorMouseRelease(QMouseEvent *event) {
     Q_UNUSED(event);
     m_draggedPointIndex = -1;
-    m_plotEditor->setInteraction(QCP::iRangeDrag, true); // Re-enable panning
+    m_plotEditor->setInteraction(QCP::iRangeDrag, true);
 }
 
 void MainWindow::onEditorMouseDoubleClick(QMouseEvent *event) {
@@ -2803,16 +2936,16 @@ void MainWindow::onSmoothClicked() {
 
 void MainWindow::onHumanizeClicked() {
     if (m_editorY.isEmpty()) return;
-    double maxJitter = m_spinLfoDepth->value() * 0.1; // 10% of current depth
+        double maxJitter = m_spinLfoDepthStart->value() * 0.1;
 
-    for (int i = 1; i < m_editorY.size() - 1; ++i) { // Don't jitter the very first/last points
+    for (int i = 1; i < m_editorY.size() - 1; ++i) {
         double jitterY = (QRandomGenerator::global()->generateDouble() * 2.0 - 1.0) * maxJitter;
         m_editorY[i] += jitterY;
 
-        // Slight X jitter too, being careful not to cross adjacent points
+
         double spaceLeft = m_editorX[i] - m_editorX[i-1];
         double spaceRight = m_editorX[i+1] - m_editorX[i];
-        double maxJitterX = std::min(spaceLeft, spaceRight) * 0.2; // 20% of space
+        double maxJitterX = std::min(spaceLeft, spaceRight) * 0.2;
         double jitterX = (QRandomGenerator::global()->generateDouble() * 2.0 - 1.0) * maxJitterX;
         m_editorX[i] += jitterX;
     }
@@ -2822,15 +2955,15 @@ void MainWindow::onHumanizeClicked() {
 void MainWindow::onQuantizeYClicked() {
 
     if (m_editorY.isEmpty()) return;
-    double steps = 12.0; // E.g., 12 semitones
-    double range = m_spinLfoDepth->value() * 2.0;
+    double steps = 12.0;
+    double range = m_spinLfoDepthStart->value() * 2.0;
     double stepSize = range / steps;
     if (stepSize <= 0) return;
 
     for (int i = 0; i < m_editorY.size(); ++i) {
         m_editorY[i] = std::round(m_editorY[i] / stepSize) * stepSize;
     }
-    m_comboInterpolation->setCurrentIndex(0); // Auto-switch to Step/Discrete mode
+    m_comboInterpolation->setCurrentIndex(0);
     updateEditorPlot();
 }
 
@@ -2894,7 +3027,7 @@ void MainWindow::onLoadXptAsCvClicked() {
     m_editorY.clear();
 
     double baseVal = m_spinLfoBaseValue->value();
-    double scalePerSemi = m_spinLfoDepth->value() * 0.01; // Depth controls the "Voltage per Octave" spread
+    double scalePerSemi = m_spinLfoDepthStart->value() * 0.01;
     double currentX = 0;
     double maxPos = 0;
 
@@ -2917,12 +3050,88 @@ void MainWindow::onLoadXptAsCvClicked() {
     }
 
 
-    m_comboInterpolation->setCurrentIndex(0); // Force "Discrete / Step" mode for pure CV gating
+    m_comboInterpolation->setCurrentIndex(0);
 
     if (maxPos > m_spinLfoLengthTicks->value()) {
-        m_spinLfoLengthTicks->setValue(maxPos); // Extend canvas if pattern is long
+        m_spinLfoLengthTicks->setValue(maxPos);
     }
 
     updateEditorPlot();
     QMessageBox::information(this, "Success", "Notes converted to CV!\n\nTip: Use the 'Scale Y Amplitude' button to adjust the voltage range.");
+}
+void MainWindow::onExtractEnvelopeClicked()
+{
+
+    if (m_audioData.empty()) {
+        QMessageBox::warning(this, "No Audio", "Please load an audio file in Tab 1 first!");
+        return;
+    }
+
+
+    double audioLengthSecs = (double)m_audioData.size() / m_sampleRate;
+    double ticksPerSecond = (m_bpm / 60.0) * 48.0;
+    double totalTicks = audioLengthSecs * ticksPerSecond;
+
+
+    m_spinLfoLengthTicks->setValue(qRound(totalTicks));
+
+    m_editorX.clear();
+    m_editorY.clear();
+
+
+    int points = m_spinDataPoints->value();
+    if (points < 2) points = 2;
+
+    double baseVal = m_spinLfoBaseValue->value();
+    double depthStart = m_spinLfoDepthStart->value();
+    double depthEnd = m_spinLfoDepthEnd->value();
+
+    int samplesPerPoint = m_audioData.size() / points;
+
+
+    std::vector<double> rawEnvelopes;
+    double maxRms = 0.00001; // Prevent divide by zero
+
+    for (int i = 0; i < points; ++i) {
+        int startSample = i * samplesPerPoint;
+        int endSample = std::min(startSample + samplesPerPoint, (int)m_audioData.size());
+
+        double sumSq = 0;
+        int count = endSample - startSample;
+        for (int j = startSample; j < endSample; ++j) {
+            sumSq += m_audioData[j] * m_audioData[j];
+        }
+
+        double rms = std::sqrt(sumSq / count);
+        rawEnvelopes.push_back(rms);
+
+        if (rms > maxRms) maxRms = rms;
+    }
+
+
+    double stepTicks = totalTicks / (points - 1);
+    double tension = m_spinTension->value();
+
+    for (int i = 0; i < points; ++i) {
+        double t = i * stepTicks;
+        double t_norm = (points > 1) ? (double)i / (points - 1) : 0.0;
+
+        double currentDepth = depthStart + (depthEnd - depthStart) * t_norm;
+
+        double normalizedVol = rawEnvelopes[i] / maxRms;
+
+
+        normalizedVol = std::pow(normalizedVol, tension);
+
+
+        double val = baseVal + (normalizedVol * currentDepth);
+
+        m_editorX.append(t);
+        m_editorY.append(val);
+    }
+
+
+    m_comboInterpolation->setCurrentIndex(2);
+
+    updateEditorPlot();
 }

@@ -23,6 +23,7 @@
 #include <QtXml>
 #include <QRandomGenerator>
 #include <QTextEdit>
+#include <QScrollArea>
 
 class MainWindow : public QMainWindow
 {
@@ -90,6 +91,7 @@ private slots:
     void onLoadShapeClicked();
     void onLoadXptAsCvClicked();
     void onScaleYAmplitudeClicked();
+    void onExtractEnvelopeClicked();
 
 private:
     struct ExtractedNote {
@@ -209,7 +211,7 @@ private:
     QWidget *m_tabAutomation;
     QPushButton *m_btnLoadMmp;
     QLabel *m_lblLoadedMmp;
-
+    QLabel *m_lblProjectStats;
     QCustomPlot *m_plotEditor;
     QComboBox *m_comboTracks;
     QComboBox *m_comboTargetParam;
@@ -219,11 +221,15 @@ private:
 
     QComboBox *m_comboMacroType;
     QComboBox *m_comboWaveform;
-    QDoubleSpinBox *m_spinLfoFreq;
+    QDoubleSpinBox *m_spinLfoFreqStart;
+    QDoubleSpinBox *m_spinLfoFreqEnd;
     QDoubleSpinBox *m_spinLfoPhase;
 
-    QDoubleSpinBox *m_spinLfoDepth;
+    QDoubleSpinBox *m_spinLfoDepthStart;
+    QDoubleSpinBox *m_spinLfoDepthEnd;
     QDoubleSpinBox *m_spinLfoBaseValue;
+    QDoubleSpinBox *m_spinSwing;
+    QDoubleSpinBox *m_spinTension;
     QSpinBox *m_spinDataPoints;
 
     QVector<double> m_editorX;
@@ -236,12 +242,17 @@ private:
     QPushButton *m_btnCopyToEditor;
 
     QPushButton *m_btnGenerateLfo;
+    QPushButton *m_btnExtractEnvelope;
     QPushButton *m_btnReverseEditor;
     QPushButton *m_btnClearEditor;
     QPushButton *m_btnInjectMmp;
 
     QDomDocument m_mmpDocument;
     QString m_currentMmpPath;
+
+    QComboBox *m_comboBlendMode;
+    QCheckBox *m_checkSnapGrid;
+    QComboBox *m_comboQuantizeX;
 
     struct ParsedTrack {
         QString trackName;
