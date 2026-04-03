@@ -14,8 +14,8 @@ if(MINGW)
 endif()
 
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets PrintSupport Multimedia Concurrent)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets PrintSupport Multimedia Concurrent)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets PrintSupport Multimedia Concurrent Xml)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets PrintSupport Multimedia Concurrent Xml)
 
 set(PROJECT_SOURCES
         main.cpp
@@ -56,6 +56,7 @@ target_link_libraries(HarmonicGridAnalyser PRIVATE
     Qt${QT_VERSION_MAJOR}::PrintSupport
     Qt${QT_VERSION_MAJOR}::Multimedia
     Qt${QT_VERSION_MAJOR}::Concurrent
+    Qt${QT_VERSION_MAJOR}::Xml
 )
 
 target_include_directories(HarmonicGridAnalyser PRIVATE 

@@ -20,8 +20,9 @@
 #include <QTabWidget>
 #include <QProgressBar>
 #include <QTimer>
-#include <QMediaPlayer>
-#include <QAudioOutput>
+#include <QtXml>
+#include <QRandomGenerator>
+#include <QTextEdit>
 
 class MainWindow : public QMainWindow
 {
@@ -38,7 +39,7 @@ private slots:
 
     void onStepsChanged();
     void onBpmChanged();
-    
+
     void onSpectrogramMousePress(QMouseEvent *event);
     void onSpectrogramMouseMove(QMouseEvent *event);
     void onSpectrogramMouseRelease(QMouseEvent *event);
@@ -55,7 +56,6 @@ private slots:
     void nudgeSelectionLeft();
     void nudgeSelectionRight();
 
-
     void onLoadSepFileClicked();
     void onProcessSeparationClicked();
     void onSaveSepWavClicked();
@@ -64,6 +64,32 @@ private slots:
     void onStopSepClicked();
     void updateSepPlaybackLine();
 
+    void onLoadMmpClicked();
+    void parseMmpFile(const QString &filePath);
+    void onInjectMmpClicked();
+    void onExistingAutomationSelected(int currentRow);
+
+    void onCopyToEditorClicked();
+    void onReverseEditorClicked();
+    void onClearEditorClicked();
+    void onGenerateLfoClicked();
+    void onEditorLengthChanged(int ticks);
+    void onTrackSelectionChanged(int index);
+    void updateEditorPlot();
+
+    void onEditorMousePress(QMouseEvent *event);
+    void onEditorMouseMove(QMouseEvent *event);
+    void onEditorMouseRelease(QMouseEvent *event);
+    void onEditorMouseDoubleClick(QMouseEvent *event);
+
+    void onSmoothClicked();
+    void onQuantizeYClicked();
+    void onHumanizeClicked();
+    void onInvertClicked();
+    void onSaveShapeClicked();
+    void onLoadShapeClicked();
+    void onLoadXptAsCvClicked();
+    void onScaleYAmplitudeClicked();
 
 private:
     struct ExtractedNote {
@@ -75,8 +101,20 @@ private:
         int visualStep = 0;
     };
 
+    struct ExistingAutomation {
+        QString trackName;
+        QString patternName;
+        int lengthTicks;
+        int prog;
+        QVector<double> tickX;
+        QVector<double> valueY;
+        QStringList targetObjectIds;
+        QStringList resolvedTargets;
+    };
 
+    std::vector<ExistingAutomation> m_existingAutomations;
     std::vector<ExtractedNote> m_surgicalNotes;
+    int m_draggedPointIndex = -1;
     QMediaPlayer *m_player;
     QTableWidget *m_bandTable;
     QProgressBar *m_progressBar;
@@ -106,7 +144,7 @@ private:
     QCPItemRect *m_selectionBox;
     QComboBox *m_comboAlgorithm;
     QComboBox *m_comboBpmType;
-    
+
     QCustomPlot *m_waveformPlot;
     QTableWidget *m_stepTable;
     QTabWidget *m_mainTabs;
@@ -133,13 +171,12 @@ private:
 
     QDoubleSpinBox *m_spinThreshold;
     double m_noteThreshold = 40.0;
-    
+
     bool m_isSelecting = false;
     double m_selStartTime = 0;
     double m_selEndTime = 0;
     double m_selLowFreq = 0;
     double m_selHighFreq = 0;
-    
 
     int m_detectedMidiNote = 60;
 
@@ -167,6 +204,51 @@ private:
     QAudioOutput *m_sepAudioOutput;
     QTimer *m_sepPlaybackTimer;
     QCPItemLine *m_sepPlaybackLine;
+
+
+    QWidget *m_tabAutomation;
+    QPushButton *m_btnLoadMmp;
+    QLabel *m_lblLoadedMmp;
+
+    QCustomPlot *m_plotEditor;
+    QComboBox *m_comboTracks;
+    QComboBox *m_comboTargetParam;
+    QComboBox *m_comboInterpolation;
+    QSpinBox *m_spinLfoLengthTicks;
+    QLabel *m_lblEditorDurationBars;
+
+    QComboBox *m_comboMacroType;
+    QComboBox *m_comboWaveform;
+    QDoubleSpinBox *m_spinLfoFreq;
+    QDoubleSpinBox *m_spinLfoPhase;
+
+    QDoubleSpinBox *m_spinLfoDepth;
+    QDoubleSpinBox *m_spinLfoBaseValue;
+    QSpinBox *m_spinDataPoints;
+
+    QVector<double> m_editorX;
+    QVector<double> m_editorY;
+
+
+    QListWidget *m_listAutomations;
+    QCustomPlot *m_plotAutomation;
+    QTextEdit *m_txtAutomationInfo;
+    QPushButton *m_btnCopyToEditor;
+
+    QPushButton *m_btnGenerateLfo;
+    QPushButton *m_btnReverseEditor;
+    QPushButton *m_btnClearEditor;
+    QPushButton *m_btnInjectMmp;
+
+    QDomDocument m_mmpDocument;
+    QString m_currentMmpPath;
+
+    struct ParsedTrack {
+        QString trackName;
+        QDomElement trackElement;
+        QDomElement targetElement;
+    };
+    std::vector<ParsedTrack> m_parsedTracks;
 
     struct Biquad {
         float a0, a1, a2, b1, b2;

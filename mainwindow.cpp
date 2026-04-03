@@ -8,6 +8,7 @@ extern "C" {
 #include "mainwindow.h"
 #include <cmath>
 #include <QtConcurrent>
+#include <QInputDialog>
 
 
 void MainWindow::Biquad::setLPF(float fs, float f0, float Q) {
@@ -407,6 +408,223 @@ void MainWindow::setupUI()
 
 
     m_mainTabs->addTab(m_tabSeparation, "Source Separation (WIP)");
+
+
+    // ========================================================
+    // TAB 4: AUTOMATION EDITOR
+    // ========================================================
+    m_tabAutomation = new QWidget();
+    QVBoxLayout *autoLayout = new QVBoxLayout(m_tabAutomation);
+
+    QHBoxLayout *loadLayout = new QHBoxLayout();
+    m_btnLoadMmp = new QPushButton("1. Load .mmp Project");
+    m_btnLoadMmp->setStyleSheet("font-weight: bold; padding: 5px;");
+    m_lblLoadedMmp = new QLabel("No project loaded.");
+    loadLayout->addWidget(m_btnLoadMmp);
+    loadLayout->addWidget(m_lblLoadedMmp);
+    loadLayout->addStretch();
+    autoLayout->addLayout(loadLayout);
+
+    QSplitter *mainSplitter = new QSplitter(Qt::Vertical); // Splits Top (Editor) and Bottom (Viewer)
+    autoLayout->addWidget(mainSplitter);
+
+    QWidget *editorTopWidget = new QWidget();
+    QHBoxLayout *editorTopLayout = new QHBoxLayout(editorTopWidget); // RENAMED
+
+
+    QWidget *editorControls = new QWidget();
+    QVBoxLayout *controlLayout = new QVBoxLayout(editorControls);
+    controlLayout->addWidget(new QLabel("<h2>Mega Editor</h2>"));
+
+    QGridLayout *lfoLayout = new QGridLayout();
+    m_comboTracks = new QComboBox();
+    m_comboTargetParam = new QComboBox();
+
+    m_spinLfoLengthTicks = new QSpinBox();
+    m_spinLfoLengthTicks->setRange(48, 192000);
+    m_spinLfoLengthTicks->setValue(768);
+    m_lblEditorDurationBars = new QLabel("Duration: 4.00 Bars");
+
+    m_comboInterpolation = new QComboBox();
+    m_comboInterpolation->addItems({"0 - Discrete (Step)", "1 - Linear", "2 - Cubic Hermite (Smooth)"});
+    m_comboInterpolation->setCurrentIndex(2);
+
+    lfoLayout->addWidget(new QLabel("<b>1. Target Linking:</b>"), 0, 0, 1, 2);
+    lfoLayout->addWidget(new QLabel("Track:"), 1, 0);
+    lfoLayout->addWidget(m_comboTracks, 1, 1);
+    lfoLayout->addWidget(new QLabel("Parameter:"), 2, 0);
+    lfoLayout->addWidget(m_comboTargetParam, 2, 1);
+
+    lfoLayout->addWidget(new QLabel("<b>2. Master Settings:</b>"), 3, 0, 1, 2);
+    lfoLayout->addWidget(new QLabel("Length (Ticks):"), 4, 0);
+    lfoLayout->addWidget(m_spinLfoLengthTicks, 4, 1);
+    lfoLayout->addWidget(m_lblEditorDurationBars, 5, 1);
+    lfoLayout->addWidget(new QLabel("Interpolation:"), 6, 0);
+    lfoLayout->addWidget(m_comboInterpolation, 6, 1);
+
+    controlLayout->addLayout(lfoLayout);
+    controlLayout->addWidget(new QLabel("<hr><b>3. Generation Tools:</b>"));
+
+
+    QGridLayout *genLayout = new QGridLayout();
+
+    m_comboMacroType = new QComboBox();
+    m_comboMacroType->addItems({"LFO Oscillator", "ADSR Envelope", "Random (Sample & Hold)", "Rhythmic Gate (16ths)"});
+
+    m_comboWaveform = new QComboBox();
+    m_comboWaveform->addItems({"Sine", "Square", "Triangle", "Sawtooth Down", "Sawtooth Up"});
+
+
+    m_spinLfoFreq = new QDoubleSpinBox();
+    m_spinLfoFreq->setDecimals(1);
+    m_spinLfoFreq->setRange(1.0, 19200.0);
+    m_spinLfoFreq->setValue(192.0); // Default to 1 cycle per beat
+    m_spinLfoFreq->setSingleStep(24.0); // Step by 32nd notes for easy musical snapping
+
+    m_spinLfoPhase = new QDoubleSpinBox();
+    m_spinLfoPhase->setRange(0.0, 360.0);
+    m_spinLfoPhase->setValue(0.0);
+    m_spinLfoPhase->setSuffix(" °");
+
+    m_spinLfoDepth = new QDoubleSpinBox(); m_spinLfoDepth->setRange(0.0, 2.0); m_spinLfoDepth->setValue(0.5);
+    m_spinLfoBaseValue = new QDoubleSpinBox(); m_spinLfoBaseValue->setRange(-1.0, 200.0); m_spinLfoBaseValue->setValue(0.5);
+    m_spinDataPoints = new QSpinBox(); m_spinDataPoints->setRange(2, 2000); m_spinDataPoints->setValue(64);
+
+    genLayout->addWidget(new QLabel("Macro Engine:"), 0, 0); genLayout->addWidget(m_comboMacroType, 0, 1);
+    genLayout->addWidget(new QLabel("LFO Waveform:"), 1, 0); genLayout->addWidget(m_comboWaveform, 1, 1);
+
+
+    genLayout->addWidget(new QLabel("Rate (Ticks/Cycle):"), 2, 0); genLayout->addWidget(m_spinLfoFreq, 2, 1);
+    genLayout->addWidget(new QLabel("Phase (Horiz Offset):"), 3, 0); genLayout->addWidget(m_spinLfoPhase, 3, 1);
+
+    genLayout->addWidget(new QLabel("Depth (Amplitude):"), 4, 0); genLayout->addWidget(m_spinLfoDepth, 4, 1);
+    genLayout->addWidget(new QLabel("Base (Vert Center):"), 5, 0); genLayout->addWidget(m_spinLfoBaseValue, 5, 1);
+    genLayout->addWidget(new QLabel("Data Points:"), 6, 0); genLayout->addWidget(m_spinDataPoints, 6, 1);
+
+    controlLayout->addLayout(genLayout);
+
+    m_btnGenerateLfo = new QPushButton("Generate LFO Shape");
+    m_btnReverseEditor = new QPushButton("Reverse Array (Flip Time)");
+    m_btnClearEditor = new QPushButton("Clear ");
+
+    controlLayout->addWidget(m_btnGenerateLfo);
+    controlLayout->addWidget(m_btnReverseEditor);
+    controlLayout->addWidget(m_btnClearEditor);
+
+    QPushButton *btnSmooth = new QPushButton("Smooth Curve");
+    QPushButton *btnQuantizeY = new QPushButton("Quantize Y (Steps)");
+    QPushButton *btnHumanize = new QPushButton("Humanize (Jitter)");
+    QPushButton *btnInvert = new QPushButton("Invert Vertically");
+
+    controlLayout->addWidget(btnSmooth);
+    controlLayout->addWidget(btnQuantizeY);
+    controlLayout->addWidget(btnHumanize);
+    controlLayout->addWidget(btnInvert);
+
+
+    QHBoxLayout *shapeFileLayout = new QHBoxLayout();
+    QPushButton *btnSaveShape = new QPushButton("Save Shape (.xpa)");
+    QPushButton *btnLoadShape = new QPushButton("Load Shape (.xpa)");
+
+    QPushButton *btnLoadXptCv = new QPushButton("Load Pattern as CV (.xpt)");
+    btnLoadXptCv->setStyleSheet("background-color: #2E8B57; color: white;"); // Make it green to stand out
+
+    QPushButton *btnScaleAmplitude = new QPushButton("Scale Y Amplitude");
+
+
+    shapeFileLayout->addWidget(btnLoadShape);
+    shapeFileLayout->addWidget(btnSaveShape);
+    shapeFileLayout->addWidget(btnLoadXptCv);
+
+
+    controlLayout->addLayout(shapeFileLayout);
+    controlLayout->addWidget(btnScaleAmplitude);
+
+
+    connect(btnSmooth, &QPushButton::clicked, this, &MainWindow::onSmoothClicked);
+    connect(btnQuantizeY, &QPushButton::clicked, this, &MainWindow::onQuantizeYClicked);
+    connect(btnHumanize, &QPushButton::clicked, this, &MainWindow::onHumanizeClicked);
+    connect(btnInvert, &QPushButton::clicked, this, &MainWindow::onInvertClicked);
+
+    connect(btnSaveShape, &QPushButton::clicked, this, &MainWindow::onSaveShapeClicked);
+    connect(btnLoadShape, &QPushButton::clicked, this, &MainWindow::onLoadShapeClicked);
+
+    connect(btnLoadXptCv, &QPushButton::clicked, this, &MainWindow::onLoadXptAsCvClicked);
+    connect(btnScaleAmplitude, &QPushButton::clicked, this, &MainWindow::onScaleYAmplitudeClicked);
+
+    controlLayout->addStretch();
+
+
+
+
+    m_btnInjectMmp = new QPushButton("INJECT & SAVE AS .MMP");
+    m_btnInjectMmp->setStyleSheet("background-color: #8B008B; color: white; font-weight: bold; padding: 15px; font-size: 14px;");
+    m_btnInjectMmp->setEnabled(false);
+    controlLayout->addWidget(m_btnInjectMmp);
+
+    editorTopLayout->addWidget(editorControls, 1);
+
+
+    m_plotEditor = new QCustomPlot();
+    m_plotEditor->xAxis->setLabel("Time (Ticks)");
+    m_plotEditor->yAxis->setLabel("Parameter Value");
+    m_plotEditor->setInteraction(QCP::iRangeDrag, true);
+    m_plotEditor->setInteraction(QCP::iRangeZoom, true);
+    editorTopLayout->addWidget(m_plotEditor, 3);
+
+    connect(m_plotEditor, &QCustomPlot::mousePress, this, &MainWindow::onEditorMousePress);
+    connect(m_plotEditor, &QCustomPlot::mouseMove, this, &MainWindow::onEditorMouseMove);
+    connect(m_plotEditor, &QCustomPlot::mouseRelease, this, &MainWindow::onEditorMouseRelease);
+    connect(m_plotEditor, &QCustomPlot::mouseDoubleClick, this, &MainWindow::onEditorMouseDoubleClick);
+
+
+    QWidget *viewerBottomWidget = new QWidget();
+    QVBoxLayout *viewerBottomLayout = new QVBoxLayout(viewerBottomWidget);
+    viewerBottomLayout->addWidget(new QLabel("<h3>Detected Automations in File</h3>"));
+
+    QHBoxLayout *listInfoLayout = new QHBoxLayout();
+    m_listAutomations = new QListWidget();
+    listInfoLayout->addWidget(m_listAutomations, 1);
+
+    QVBoxLayout *infoLayout = new QVBoxLayout();
+    m_txtAutomationInfo = new QTextEdit();
+    m_txtAutomationInfo->setReadOnly(true);
+    m_txtAutomationInfo->setStyleSheet("background-color: #f0f0f0; color: #333;");
+
+    m_btnCopyToEditor = new QPushButton("↑ COPY TO EDITOR ↑");
+    m_btnCopyToEditor->setStyleSheet("background-color: #00557f; color: white; font-weight: bold; padding: 10px;");
+    m_btnCopyToEditor->setEnabled(false);
+
+    infoLayout->addWidget(m_txtAutomationInfo);
+    infoLayout->addWidget(m_btnCopyToEditor);
+    listInfoLayout->addLayout(infoLayout, 1);
+
+    viewerBottomLayout->addLayout(listInfoLayout, 1);
+
+    m_plotAutomation = new QCustomPlot();
+    m_plotAutomation->xAxis->setLabel("Time (Ticks)");
+    viewerBottomLayout->addWidget(m_plotAutomation, 2);
+
+    mainSplitter->addWidget(editorTopWidget);
+    mainSplitter->addWidget(viewerBottomWidget);
+
+
+    connect(m_btnLoadMmp, &QPushButton::clicked, this, &MainWindow::onLoadMmpClicked);
+    connect(m_listAutomations, &QListWidget::currentRowChanged, this, &MainWindow::onExistingAutomationSelected);
+    connect(m_btnCopyToEditor, &QPushButton::clicked, this, &MainWindow::onCopyToEditorClicked);
+
+    connect(m_btnGenerateLfo, &QPushButton::clicked, this, &MainWindow::onGenerateLfoClicked);
+    connect(m_btnReverseEditor, &QPushButton::clicked, this, &MainWindow::onReverseEditorClicked);
+    connect(m_btnClearEditor, &QPushButton::clicked, this, &MainWindow::onClearEditorClicked);
+    connect(m_btnInjectMmp, &QPushButton::clicked, this, &MainWindow::onInjectMmpClicked);
+
+    connect(m_comboTracks, &QComboBox::currentIndexChanged, this, &MainWindow::onTrackSelectionChanged);
+    connect(m_spinLfoLengthTicks, &QSpinBox::valueChanged, this, &MainWindow::onEditorLengthChanged);
+    connect(m_comboInterpolation, &QComboBox::currentIndexChanged, this, &MainWindow::updateEditorPlot);
+
+
+
+    m_mainTabs->addTab(m_tabAutomation, "4. Automation Macros");
 }
 
 void MainWindow::openFile()
@@ -472,7 +690,7 @@ void MainWindow::generateSpectrogram()
             double mag = sqrt(out[f].r * out[f].r + out[f].i * out[f].i);
             double decibels = 20 * log10(mag + 1e-6);
             m_spectrogramMap->data()->setCell(t, f, decibels);
-            m_multiSpectrogramMap->data()->setCell(t, f, decibels); // <--- Add this line
+            m_multiSpectrogramMap->data()->setCell(t, f, decibels);
             m_mapBefore->data()->setCell(t, f, decibels);
         }
 
@@ -490,7 +708,7 @@ void MainWindow::generateSpectrogram()
     m_multiSpectrogramMap->rescaleDataRange(true);
     m_multiSpectrogramPlot->xAxis->setRange(0, (double)nSamples/m_sampleRate);
     m_multiSpectrogramPlot->yAxis->setRange(0, 5000);
-    updateBandVisuals(); // Draw the bands once the audio is loaded
+    updateBandVisuals();
 
     m_mapBefore->rescaleDataRange(true);
     m_spectrogramBefore->xAxis->setRange(0, (double)nSamples/m_sampleRate);
@@ -513,7 +731,7 @@ void MainWindow::onSpectrogramMousePress(QMouseEvent *event)
 
         m_selStartTime = snapTimeToGrid(rawTime);
         m_selLowFreq = freq;
-        m_selHighFreq = freq; // Will expand on drag
+        m_selHighFreq = freq;
 
         if (m_checkSnapToBar->isChecked()) {
             double barDuration = (60.0 / m_bpm) * 4.0;
@@ -532,13 +750,13 @@ void MainWindow::onSpectrogramMouseMove(QMouseEvent *event)
         double rawTime = m_spectrogramPlot->xAxis->pixelToCoord(event->pos().x());
         double freq = m_spectrogramPlot->yAxis->pixelToCoord(event->pos().y());
 
-        m_selHighFreq = freq; // Expand vertical range
+        m_selHighFreq = freq;
 
         if (m_checkSnapToBar->isChecked()) {
             double barDuration = (60.0 / m_bpm) * 4.0;
             double draggedDuration = rawTime - m_selStartTime;
 
-            // Snap to multiples of bars! (Forces a minimum of 1 bar)
+
             int numBars = std::max(1, (int)std::round(draggedDuration / barDuration));
             m_selEndTime = m_selStartTime + (numBars * barDuration);
         } else {
@@ -643,7 +861,7 @@ void MainWindow::processSelection()
 
 int MainWindow::extractADSR(const std::vector<float>& isolatedAudio)
 {
-    int window = m_sampleRate / 100; // 10ms window
+    int window = m_sampleRate / 100;
     if (isolatedAudio.size() <= window) return 0;
 
     float maxVol = 0;
@@ -752,13 +970,13 @@ void MainWindow::updateStepGrid(const std::vector<float>& isolatedAudio)
 
                 int algoIndex = m_comboAlgorithm->currentIndex();
                 switch(algoIndex) {
-                case 0: // YIN Note
+                case 0:
                     newNote.midiNote = freqToMidi(detectPitchYin(analysisBuffer));
                     break;
-                case 1: // HPS Note
+                case 1:
                     newNote.midiNote = freqToMidi(detectPitchHPS(analysisBuffer));
                     break;
-                case 2: // Basic Chord
+                case 2:
                     newNote.chord = detectChord(analysisBuffer);
                     break;
                 case 3: // Template Chord
@@ -857,7 +1075,7 @@ std::vector<float> MainWindow::applyBandpassFilter(const std::vector<float>& inp
 
 
     Biquad hpf;
-    hpf.setHPF(m_sampleRate, lowFreq, 0.707f); // Butterworth Q
+    hpf.setHPF(m_sampleRate, lowFreq, 0.707f);
 
 
     Biquad lpf;
@@ -1124,10 +1342,10 @@ void MainWindow::exportLMMSProject()
     QTextStream out(&file);
 
 
-    double stepDuration = (60.0 / m_bpm) / 4.0; // 16th note duration in seconds
+    double stepDuration = (60.0 / m_bpm) / 4.0;
     int samplesPerStep = m_sampleRate * stepDuration;
     int totalSteps = m_audioData.size() / samplesPerStep;
-    int ticksPerStep = 48; // Standard LMMS 16th note length
+    int ticksPerStep = 48;
 
     m_progressBar->setVisible(true);
     m_progressBar->setMaximum(numBands);
@@ -1291,7 +1509,7 @@ void MainWindow::saveFilteredSelection()
         char wave[4] = {'W','A','V','E'};
         char fmt[4] = {'f','m','t',' '};
         uint32_t fmtSize = 16;
-        uint16_t audioFormat = 3; // 3 = IEEE Float
+        uint16_t audioFormat = 3;
         uint16_t numChannels = 1; // Mono export from selection
         uint32_t sampleRate = 44100;
         uint32_t byteRate = 44100 * 4;
@@ -1512,7 +1730,7 @@ void MainWindow::playSynthesizedPattern()
             for (double f : activeFreqs) {
                 sample += std::sin(2.0 * M_PI * f * t);
             }
-            sample /= activeFreqs.size(); // Normalize volume for chords
+            sample /= activeFreqs.size();
 
             double envelope = 1.0;
             if (s < fadeSamples) {
@@ -1907,14 +2125,14 @@ void MainWindow::onStopSepClicked()
 void MainWindow::updateSepPlaybackLine()
 {
     if (m_sepPlayer->playbackState() == QMediaPlayer::PlayingState) {
-        qint64 pos = m_sepPlayer->position(); // In milliseconds
+        qint64 pos = m_sepPlayer->position();
         double seconds = pos / 1000.0;
 
         m_sepPlaybackLine->start->setCoords(seconds, 0);
         m_sepPlaybackLine->end->setCoords(seconds, m_sampleRate / 2.0); // Up to Nyquist
         m_spectrogramAfter->replot();
     } else {
-        onStopSepClicked(); // Auto-stop when finished
+        onStopSepClicked();
     }
 }
 
@@ -1938,4 +2156,773 @@ void MainWindow::onSaveSepWavClicked()
     } else {
         QMessageBox::warning(this, "Error", "Failed to save the WAV file.");
     }
+}
+
+void MainWindow::onLoadMmpClicked()
+{
+    QString fileName = QFileDialog::getOpenFileName(this, "Open LMMS Project", "", "LMMS Project (*.mmp)");
+    if (fileName.isEmpty()) return;
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, "Error", "Could not open file.");
+        return;
+    }
+
+    QString errorStr;
+    int errorLine, errorColumn;
+
+    if (!m_mmpDocument.setContent(&file, &errorStr, &errorLine, &errorColumn)) {
+        QMessageBox::warning(this, "Parse Error", QString("XML Parse Error at line %1, col %2: %3").arg(errorLine).arg(errorColumn).arg(errorStr));
+        file.close();
+        return;
+    }
+    file.close();
+
+    m_currentMmpPath = fileName;
+    m_lblLoadedMmp->setText("Loaded: " + QFileInfo(fileName).fileName());
+
+    parseMmpFile(fileName);
+}
+
+void MainWindow::parseMmpFile(const QString &/*filePath*/)
+{
+    m_parsedTracks.clear();
+    m_comboTracks->clear();
+    m_existingAutomations.clear();
+    m_listAutomations->clear();
+    m_txtAutomationInfo->clear();
+    m_plotAutomation->clearGraphs();
+    m_plotAutomation->replot();
+
+
+    QHash<QString, QString> idMap;
+    QDomNodeList allNodes = m_mmpDocument.elementsByTagName("*");
+    for (int i = 0; i < allNodes.count(); ++i) {
+        QDomElement elem = allNodes.at(i).toElement();
+        if (elem.hasAttribute("id")) {
+            idMap[elem.attribute("id")] = elem.tagName();
+        }
+    }
+
+
+    QDomNodeList trackNodes = m_mmpDocument.documentElement().elementsByTagName("track");
+
+    for (int i = 0; i < trackNodes.count(); ++i) {
+        QDomElement trackElem = trackNodes.at(i).toElement();
+        QString type = trackElem.attribute("type");
+
+        if (type == "0" || type == "1") {
+            QString trackName = trackElem.attribute("name");
+            QDomNodeList instTracks = trackElem.elementsByTagName("instrumenttrack");
+            if (instTracks.count() > 0) {
+                QDomElement instTrackElem = instTracks.at(0).toElement();
+                QDomElement targetElem = instTrackElem;
+                QDomElement instContainer = instTrackElem.firstChildElement("instrument");
+                if (!instContainer.isNull()) {
+                    QDomElement pluginElem = instContainer.firstChildElement();
+                    if (!pluginElem.isNull()) {
+                        targetElem = pluginElem;
+                        trackName += " (" + pluginElem.tagName() + ")";
+                    }
+                }
+                ParsedTrack pt;
+                pt.trackName = trackName;
+                pt.trackElement = trackElem;
+                pt.targetElement = targetElem;
+                m_parsedTracks.push_back(pt);
+                m_comboTracks->addItem(trackName);
+            }
+        }
+
+        else if (type == "5") {
+            QString trackName = trackElem.attribute("name");
+            QDomNodeList patterns = trackElem.elementsByTagName("automationpattern");
+
+            for (int j = 0; j < patterns.count(); ++j) {
+                QDomElement patElem = patterns.at(j).toElement();
+                ExistingAutomation ea;
+                ea.trackName = trackName;
+                ea.patternName = patElem.attribute("name");
+                ea.lengthTicks = patElem.attribute("len").toInt();
+                ea.prog = patElem.attribute("prog", "1").toInt();
+
+
+                QDomNodeList times = patElem.elementsByTagName("time");
+                for (int k = 0; k < times.count(); ++k) {
+                    QDomElement tElem = times.at(k).toElement();
+                    ea.tickX.append(tElem.attribute("pos").toDouble());
+                    ea.valueY.append(tElem.attribute("value").toDouble());
+                }
+
+
+                QDomNodeList objects = patElem.elementsByTagName("object");
+                for (int k = 0; k < objects.count(); ++k) {
+                    QString objId = objects.at(k).toElement().attribute("id");
+                    ea.targetObjectIds.append(objId);
+
+
+                    QString targetName = idMap.value(objId, "Unlinked / Dead ID");
+                    ea.resolvedTargets.append(targetName);
+                }
+
+                m_existingAutomations.push_back(ea);
+                m_listAutomations->addItem(trackName + " | " + ea.patternName);
+            }
+        }
+    }
+
+    m_btnInjectMmp->setEnabled(m_parsedTracks.size() > 0);
+}
+void MainWindow::onInjectMmpClicked()
+{
+
+    if (m_editorX.isEmpty()) {
+        QMessageBox::warning(this, "Empty ", "Please generate or copy a pattern in the Mega Editor first!");
+        return;
+    }
+
+    int selectedIdx = m_comboTracks->currentIndex();
+    if (selectedIdx < 0 || selectedIdx >= m_parsedTracks.size()) return;
+
+    ParsedTrack &pt = m_parsedTracks[selectedIdx];
+
+
+    QString paramRaw = m_comboTargetParam->currentText();
+    QString paramKey = paramRaw.split(" ").first();
+
+
+    int newId = QRandomGenerator::global()->bounded(1000000, 9999999);
+
+    QDomElement nodeToMutate = pt.targetElement;
+    if (paramKey == "vol" || paramKey == "pan") {
+        nodeToMutate = pt.trackElement.firstChildElement("instrumenttrack");
+    }
+
+
+    QString existingVal = nodeToMutate.attribute(paramKey, QString::number(m_spinLfoBaseValue->value()));
+
+
+    nodeToMutate.removeAttribute(paramKey);
+
+
+    QDomElement newParamChild = m_mmpDocument.createElement(paramKey);
+    newParamChild.setAttribute("id", QString::number(newId));
+    newParamChild.setAttribute("value", existingVal);
+    if (pt.targetElement.tagName() == "xpressive") newParamChild.setAttribute("scale_type", "linear");
+
+    nodeToMutate.appendChild(newParamChild);
+
+
+
+    QDomElement trackContainer = m_mmpDocument.documentElement().firstChildElement("song").firstChildElement("trackcontainer");
+
+    QDomElement autoTrack = m_mmpDocument.createElement("track");
+    autoTrack.setAttribute("type", "5");
+    autoTrack.setAttribute("name", "Injected Macro -> " + paramKey);
+    autoTrack.setAttribute("muted", "0");
+    autoTrack.setAttribute("solo", "0");
+
+    QDomElement autoTrackInner = m_mmpDocument.createElement("automationtrack");
+    autoTrack.appendChild(autoTrackInner);
+
+    int lenTicks = m_spinLfoLengthTicks->value();
+
+    QDomElement autoPattern = m_mmpDocument.createElement("automationpattern");
+    autoPattern.setAttribute("name", pt.trackName + " > " + paramKey);
+    autoPattern.setAttribute("pos", "0");
+    autoPattern.setAttribute("len", QString::number(lenTicks));
+    autoPattern.setAttribute("prog", QString::number(m_comboInterpolation->currentIndex()));
+    autoPattern.setAttribute("tens", "1");
+    autoPattern.setAttribute("mute", "0");
+
+
+    for (int i = 0; i < m_editorX.size(); ++i) {
+        QDomElement timeElem = m_mmpDocument.createElement("time");
+        timeElem.setAttribute("pos", QString::number(m_editorX[i], 'f', 0)); // Ticks must be whole integers
+        timeElem.setAttribute("value", QString::number(m_editorY[i], 'f', 5));
+        autoPattern.appendChild(timeElem);
+    }
+
+
+    QDomElement objLink = m_mmpDocument.createElement("object");
+    objLink.setAttribute("id", QString::number(newId));
+    autoPattern.appendChild(objLink);
+
+    autoTrack.appendChild(autoPattern);
+    trackContainer.appendChild(autoTrack);
+
+    QString savePath = QFileDialog::getSaveFileName(this, "Save Injected Project", m_currentMmpPath.replace(".mmp", "_Macro.mmp"), "LMMS Project (*.mmp)");
+    if (savePath.isEmpty()) return;
+
+    QFile outFile(savePath);
+    if (!outFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, "Error", "Could not save the new file.");
+        return;
+    }
+
+    QTextStream outStream(&outFile);
+    m_mmpDocument.save(outStream, 2);
+    outFile.close();
+
+    QMessageBox::information(this, "Success", "Automation injected!\nLoad the new .mmp in LMMS to see your algorithmic macro.");
+}
+
+void MainWindow::onExistingAutomationSelected(int currentRow)
+{
+    if (currentRow < 0 || currentRow >= m_existingAutomations.size()) return;
+
+    ExistingAutomation& ea = m_existingAutomations[currentRow];
+
+
+    double bars = ea.lengthTicks / 192.0; // 192 ticks per standard 4/4 bar
+
+    QString progString;
+    switch(ea.prog) {
+    case 0: progString = "Discrete / Step (Instant changes)"; break;
+    case 1: progString = "Linear (Straight lines)"; break;
+    case 2: progString = "Cubic Hermite (Smooth curves)"; break;
+    default: progString = "Unknown"; break;
+    }
+
+    QString infoHtml = "<h3>Automation Details</h3>";
+    infoHtml += "<b>Parent Track:</b> " + ea.trackName + "<br/>";
+    infoHtml += "<b>Pattern Name:</b> " + ea.patternName + "<br/>";
+    infoHtml += "<b>Duration:</b> " + QString::number(ea.lengthTicks) + " Ticks (<b>" + QString::number(bars, 'f', 2) + " Bars</b>)<br/>";
+    infoHtml += "<b>Interpolation:</b> " + progString + "<br/>";
+    infoHtml += "<b>Data Points:</b> " + QString::number(ea.tickX.size()) + "<br/><br/>";
+
+    infoHtml += "<b>Linked Parameters:</b><ul>";
+    if (ea.resolvedTargets.isEmpty()) {
+        infoHtml += "<li><i>None</i></li>";
+    } else {
+        for (int i = 0; i < ea.resolvedTargets.size(); ++i) {
+            infoHtml += "<li><b>" + ea.resolvedTargets[i] + "</b> (ID: " + ea.targetObjectIds[i] + ")</li>";
+        }
+    }
+    infoHtml += "</ul>";
+
+    m_txtAutomationInfo->setHtml(infoHtml);
+
+
+    m_plotAutomation->clearGraphs();
+    m_plotAutomation->addGraph();
+    m_plotAutomation->graph(0)->setData(ea.tickX, ea.valueY);
+    m_plotAutomation->graph(0)->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDisc, 6));
+
+    if (ea.prog == 0) {
+        m_plotAutomation->graph(0)->setLineStyle(QCPGraph::lsStepLeft);
+        m_plotAutomation->graph(0)->setPen(QPen(Qt::red, 2));
+    } else {
+        m_plotAutomation->graph(0)->setLineStyle(QCPGraph::lsLine);
+        m_plotAutomation->graph(0)->setPen(QPen(Qt::cyan, 2));
+    }
+
+    double maxX = ea.lengthTicks > 0 ? ea.lengthTicks : 192;
+    if (!ea.tickX.isEmpty() && ea.tickX.last() > maxX) maxX = ea.tickX.last();
+
+    m_plotAutomation->xAxis->setRange(0, maxX + 48);
+    m_plotAutomation->graph(0)->rescaleValueAxis(false, true);
+
+    QCPRange yRange = m_plotAutomation->yAxis->range();
+    double padding = yRange.size() * 0.1;
+    if (padding == 0) padding = 0.5; // Catch flatlines
+    m_plotAutomation->yAxis->setRange(yRange.lower - padding, yRange.upper + padding);
+
+    m_plotAutomation->replot();
+
+
+    m_btnCopyToEditor->setEnabled(true);
+}
+
+
+void MainWindow::onTrackSelectionChanged(int index)
+{
+    m_comboTargetParam->clear();
+    if (index < 0 || index >= m_parsedTracks.size()) return;
+
+    ParsedTrack &pt = m_parsedTracks[index];
+
+
+    m_comboTargetParam->addItem("vol (Base Volume)");
+    m_comboTargetParam->addItem("pan (Base Panning)");
+
+
+    QDomNamedNodeMap attributes = pt.targetElement.attributes();
+    for (int i = 0; i < attributes.count(); ++i) {
+        QString attrName = attributes.item(i).nodeName();
+
+        if (attrName != "name" && attrName != "id" && !attrName.contains("sample") && attrName != "interpolateW3") {
+            m_comboTargetParam->addItem(attrName);
+        }
+    }
+}
+
+
+void MainWindow::onEditorLengthChanged(int ticks)
+{
+    double bars = ticks / 768.0;
+    m_lblEditorDurationBars->setText(QString("Duration: %1 Bars").arg(bars, 0, 'f', 2));
+    updateEditorPlot();
+}
+
+
+void MainWindow::onCopyToEditorClicked()
+{
+    int currentRow = m_listAutomations->currentRow();
+    if (currentRow < 0 || currentRow >= m_existingAutomations.size()) return;
+
+    ExistingAutomation& ea = m_existingAutomations[currentRow];
+
+    m_editorX = ea.tickX;
+    m_editorY = ea.valueY;
+
+    m_spinLfoLengthTicks->setValue(ea.lengthTicks);
+    m_comboInterpolation->setCurrentIndex(ea.prog);
+
+    updateEditorPlot();
+    QMessageBox::information(this, "Copied", "Pattern copied to the Mega Editor!");
+}
+
+void MainWindow::onReverseEditorClicked()
+{
+    if (m_editorX.isEmpty()) return;
+
+    QVector<double> newY;
+
+    for (int i = m_editorY.size() - 1; i >= 0; --i) {
+        newY.append(m_editorY[i]);
+    }
+    m_editorY = newY;
+    updateEditorPlot();
+}
+
+void MainWindow::onClearEditorClicked()
+{
+    m_editorX.clear();
+    m_editorY.clear();
+    updateEditorPlot();
+}
+
+
+void MainWindow::onGenerateLfoClicked()
+{
+    m_editorX.clear();
+    m_editorY.clear();
+
+    int lenTicks = m_spinLfoLengthTicks->value();
+    int points = m_spinDataPoints->value();
+
+
+    double ticksPerCycle = m_spinLfoFreq->value();
+    double freq = 1.0 / ticksPerCycle; // Invert it back to cycles/tick for the engine
+    // --------------------
+
+    double phaseOffset = m_spinLfoPhase->value() / 360.0; // 0.0 to 1.0 phase shift
+    double depth = m_spinLfoDepth->value();
+    double baseVal = m_spinLfoBaseValue->value();
+
+    int macroType = m_comboMacroType->currentIndex();
+    int waveType = m_comboWaveform->currentIndex();
+
+    if (points < 2) points = 2;
+    double stepSize = (double)lenTicks / (points - 1);
+
+    for (int i = 0; i < points; ++i) {
+        double t = i * stepSize;
+        double val = 0.0;
+
+        if (macroType == 0) {
+
+            double p = (t * freq) + phaseOffset;
+            double p_mod = p - std::floor(p);
+
+            if (waveType == 0) { // Sine
+                val = std::sin(p_mod * 2.0 * M_PI);
+            } else if (waveType == 1) { // Square
+                val = (p_mod < 0.5) ? 1.0 : -1.0;
+            } else if (waveType == 2) { // Triangle
+                val = 4.0 * std::abs(p_mod - 0.5) - 1.0;
+            } else if (waveType == 3) { // Sawtooth Down
+                val = 1.0 - 2.0 * p_mod;
+            } else if (waveType == 4) { // Sawtooth Up
+                val = 2.0 * p_mod - 1.0;
+            }
+
+            val = baseVal + (val * depth);
+        }
+        else if (macroType == 1) {
+
+
+            double attT = lenTicks * 0.20;
+            double decT = lenTicks * 0.20;
+            double relT = lenTicks * 0.20;
+            double susT = lenTicks - attT - decT - relT;
+            double susLvl = 0.5; // Sustain hangs at 50% of the depth
+
+            if (t < attT) {
+                val = t / attT; // Ramp up 0 to 1
+            } else if (t < attT + decT) {
+                val = 1.0 - ((t - attT) / decT) * (1.0 - susLvl); // Decay down to Sustain
+            } else if (t < attT + decT + susT) {
+                val = susLvl; // Hold Sustain
+            } else {
+                val = susLvl * (1.0 - ((t - (attT + decT + susT)) / relT)); // Release to 0
+            }
+
+            val = baseVal + (val * depth * 2.0 - depth);
+        }
+        else if (macroType == 2) {
+
+            double ticksPerHold = ticksPerCycle;
+            if (ticksPerHold <= 0) ticksPerHold = 1.0;
+
+            int holdIndex = (int)(t / ticksPerHold);
+
+            QRandomGenerator rand(holdIndex + 9999);
+            val = rand.generateDouble() * 2.0 - 1.0;
+
+            val = baseVal + (val * depth);
+        }
+        else if (macroType == 3) {
+
+            int sixteenth = (int)(t / 48.0);
+            val = (sixteenth % 2 == 0) ? 1.0 : -1.0; // On / Off
+
+            val = baseVal + (val * depth);
+        }
+
+        m_editorX.append(t);
+        m_editorY.append(val);
+    }
+
+    if ((macroType == 0 && waveType == 1) || macroType == 3) {
+        m_comboInterpolation->setCurrentIndex(0); // Set to Step
+    }
+
+    updateEditorPlot();
+}
+
+void MainWindow::updateEditorPlot()
+{
+    m_plotEditor->clearGraphs();
+    if (m_editorX.isEmpty()) {
+        m_plotEditor->replot();
+        m_btnInjectMmp->setEnabled(false);
+        return;
+    }
+
+    m_plotEditor->addGraph();
+    m_plotEditor->graph(0)->setData(m_editorX, m_editorY);
+    m_plotEditor->graph(0)->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDisc, 8));
+
+    int prog = m_comboInterpolation->currentIndex();
+    if (prog == 0) {
+        m_plotEditor->graph(0)->setLineStyle(QCPGraph::lsStepLeft);
+        m_plotEditor->graph(0)->setPen(QPen(Qt::red, 3));
+    } else {
+        m_plotEditor->graph(0)->setLineStyle(QCPGraph::lsLine);
+        m_plotEditor->graph(0)->setPen(QPen(Qt::magenta, 3));
+    }
+
+    m_plotEditor->xAxis->setRange(0, m_spinLfoLengthTicks->value() + 48);
+    m_plotEditor->graph(0)->rescaleValueAxis(false, true);
+
+    QCPRange yRange = m_plotEditor->yAxis->range();
+    double padding = yRange.size() * 0.2;
+    if (padding == 0) padding = 0.5;
+    m_plotEditor->yAxis->setRange(yRange.lower - padding, yRange.upper + padding);
+
+    m_plotEditor->replot();
+    m_btnInjectMmp->setEnabled(m_parsedTracks.size() > 0);
+}
+
+void MainWindow::onEditorMousePress(QMouseEvent *event) {
+    if (m_editorX.isEmpty() || event->button() != Qt::LeftButton) return;
+
+    double x = m_plotEditor->xAxis->pixelToCoord(event->pos().x());
+    double y = m_plotEditor->yAxis->pixelToCoord(event->pos().y());
+
+
+    double minDistance = std::numeric_limits<double>::max();
+    int closestIndex = -1;
+
+    for (int i = 0; i < m_editorX.size(); ++i) {
+
+        double px = m_plotEditor->xAxis->coordToPixel(m_editorX[i]);
+        double py = m_plotEditor->yAxis->coordToPixel(m_editorY[i]);
+        double dist = std::hypot(event->pos().x() - px, event->pos().y() - py);
+
+        if (dist < 10.0 && dist < minDistance) { // 10 pixel grab radius
+            minDistance = dist;
+            closestIndex = i;
+        }
+    }
+
+    if (closestIndex != -1) {
+        m_draggedPointIndex = closestIndex;
+        m_plotEditor->setInteraction(QCP::iRangeDrag, false); // Disable panning while dragging
+    }
+}
+
+void MainWindow::onEditorMouseMove(QMouseEvent *event) {
+    if (m_draggedPointIndex == -1) return;
+
+    double newX = m_plotEditor->xAxis->pixelToCoord(event->pos().x());
+    double newY = m_plotEditor->yAxis->pixelToCoord(event->pos().y());
+
+    if (m_draggedPointIndex > 0) {
+        newX = std::max(newX, m_editorX[m_draggedPointIndex - 1] + 1.0); // +1 tick min spacing
+    } else {
+        newX = std::max(newX, 0.0); // Don't go before 0
+    }
+
+    if (m_draggedPointIndex < m_editorX.size() - 1) {
+        newX = std::min(newX, m_editorX[m_draggedPointIndex + 1] - 1.0);
+    }
+
+    m_editorX[m_draggedPointIndex] = newX;
+    m_editorY[m_draggedPointIndex] = newY;
+
+    updateEditorPlot();
+}
+
+void MainWindow::onEditorMouseRelease(QMouseEvent *event) {
+    Q_UNUSED(event);
+    m_draggedPointIndex = -1;
+    m_plotEditor->setInteraction(QCP::iRangeDrag, true); // Re-enable panning
+}
+
+void MainWindow::onEditorMouseDoubleClick(QMouseEvent *event) {
+    if (event->button() != Qt::LeftButton) return;
+
+    double x = m_plotEditor->xAxis->pixelToCoord(event->pos().x());
+    double y = m_plotEditor->yAxis->pixelToCoord(event->pos().y());
+
+
+    for (int i = 0; i < m_editorX.size(); ++i) {
+        double px = m_plotEditor->xAxis->coordToPixel(m_editorX[i]);
+        double py = m_plotEditor->yAxis->coordToPixel(m_editorY[i]);
+        if (std::hypot(event->pos().x() - px, event->pos().y() - py) < 10.0) {
+            m_editorX.remove(i);
+            m_editorY.remove(i);
+            updateEditorPlot();
+            return;
+        }
+    }
+
+
+    int insertIndex = 0;
+    while (insertIndex < m_editorX.size() && m_editorX[insertIndex] < x) {
+        insertIndex++;
+    }
+
+    m_editorX.insert(insertIndex, x);
+    m_editorY.insert(insertIndex, y);
+    updateEditorPlot();
+}
+
+void MainWindow::onSaveShapeClicked() {
+    if (m_editorX.isEmpty()) return;
+
+    QString fileName = QFileDialog::getSaveFileName(this, "Save Automation Shape", "", "XML Pattern Automation (*.xpa)");
+    if (fileName.isEmpty()) return;
+
+    QDomDocument doc;
+    QDomElement root = doc.createElement("automation_shape");
+    root.setAttribute("prog", m_comboInterpolation->currentIndex());
+    root.setAttribute("len", m_spinLfoLengthTicks->value());
+    doc.appendChild(root);
+
+    for (int i = 0; i < m_editorX.size(); ++i) {
+        QDomElement point = doc.createElement("time");
+        point.setAttribute("pos", QString::number(m_editorX[i], 'f', 1));
+        point.setAttribute("value", QString::number(m_editorY[i], 'f', 5));
+        root.appendChild(point);
+    }
+
+    QFile file(fileName);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream out(&file);
+        doc.save(out, 4);
+        file.close();
+        QMessageBox::information(this, "Saved", "Automation shape saved successfully.");
+    }
+}
+
+void MainWindow::onLoadShapeClicked() {
+    QString fileName = QFileDialog::getOpenFileName(this, "Load Automation Shape", "", "XML Pattern Automation (*.xpa)");
+    if (fileName.isEmpty()) return;
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+
+    QDomDocument doc;
+    if (!doc.setContent(&file)) { file.close(); return; }
+    file.close();
+
+    QDomElement root = doc.documentElement();
+    if (root.tagName() != "automation_shape") return;
+
+    m_editorX.clear();
+    m_editorY.clear();
+
+    m_comboInterpolation->setCurrentIndex(root.attribute("prog", "2").toInt());
+    m_spinLfoLengthTicks->setValue(root.attribute("len", "768").toInt());
+
+    QDomNodeList points = root.elementsByTagName("time");
+    for (int i = 0; i < points.count(); ++i) {
+        QDomElement point = points.at(i).toElement();
+        m_editorX.append(point.attribute("pos").toDouble());
+        m_editorY.append(point.attribute("value").toDouble());
+    }
+
+    updateEditorPlot();
+}
+
+void MainWindow::onInvertClicked() {
+    if (m_editorY.isEmpty()) return;
+    double baseVal = m_spinLfoBaseValue->value();
+    for (int i = 0; i < m_editorY.size(); ++i) {
+
+        m_editorY[i] = baseVal - (m_editorY[i] - baseVal);
+    }
+    updateEditorPlot();
+}
+
+void MainWindow::onSmoothClicked() {
+
+    if (m_editorY.size() < 3) return;
+    QVector<double> newY = m_editorY;
+    for (int i = 1; i < m_editorY.size() - 1; ++i) {
+        newY[i] = (m_editorY[i-1] + m_editorY[i] + m_editorY[i+1]) / 3.0;
+    }
+    m_editorY = newY;
+    updateEditorPlot();
+}
+
+void MainWindow::onHumanizeClicked() {
+    if (m_editorY.isEmpty()) return;
+    double maxJitter = m_spinLfoDepth->value() * 0.1; // 10% of current depth
+
+    for (int i = 1; i < m_editorY.size() - 1; ++i) { // Don't jitter the very first/last points
+        double jitterY = (QRandomGenerator::global()->generateDouble() * 2.0 - 1.0) * maxJitter;
+        m_editorY[i] += jitterY;
+
+        // Slight X jitter too, being careful not to cross adjacent points
+        double spaceLeft = m_editorX[i] - m_editorX[i-1];
+        double spaceRight = m_editorX[i+1] - m_editorX[i];
+        double maxJitterX = std::min(spaceLeft, spaceRight) * 0.2; // 20% of space
+        double jitterX = (QRandomGenerator::global()->generateDouble() * 2.0 - 1.0) * maxJitterX;
+        m_editorX[i] += jitterX;
+    }
+    updateEditorPlot();
+}
+
+void MainWindow::onQuantizeYClicked() {
+
+    if (m_editorY.isEmpty()) return;
+    double steps = 12.0; // E.g., 12 semitones
+    double range = m_spinLfoDepth->value() * 2.0;
+    double stepSize = range / steps;
+    if (stepSize <= 0) return;
+
+    for (int i = 0; i < m_editorY.size(); ++i) {
+        m_editorY[i] = std::round(m_editorY[i] / stepSize) * stepSize;
+    }
+    m_comboInterpolation->setCurrentIndex(0); // Auto-switch to Step/Discrete mode
+    updateEditorPlot();
+}
+
+void MainWindow::onScaleYAmplitudeClicked() {
+    if (m_editorY.isEmpty()) return;
+
+
+    bool ok;
+    double scale = QInputDialog::getDouble(this, "Scale Y Amplitude",
+                                           "Enter multiplier (e.g., 0.5 to halve, 2.0 to double):\nNote: It scales around your 'Base' value.",
+                                           1.0, -100.0, 100.0, 3, &ok);
+    if (!ok) return;
+
+    double baseVal = m_spinLfoBaseValue->value();
+
+    for (int i = 0; i < m_editorY.size(); ++i) {
+
+        m_editorY[i] = baseVal + ((m_editorY[i] - baseVal) * scale);
+    }
+
+    updateEditorPlot();
+}
+
+void MainWindow::onLoadXptAsCvClicked() {
+    QString fileName = QFileDialog::getOpenFileName(this, "Load LMMS Pattern as CV", "", "LMMS Pattern (*.xpt)");
+    if (fileName.isEmpty()) return;
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+
+    QDomDocument doc;
+    if (!doc.setContent(&file)) { file.close(); return; }
+    file.close();
+
+    QDomNodeList notes = doc.elementsByTagName("note");
+    if (notes.isEmpty()) {
+        QMessageBox::warning(this, "Empty", "No notes found in this .xpt file!");
+        return;
+    }
+
+
+    struct XptNote { double pos; double len; int key; };
+    std::vector<XptNote> parsedNotes;
+
+    for (int i = 0; i < notes.count(); ++i) {
+        QDomElement noteElem = notes.at(i).toElement();
+        XptNote n;
+        n.pos = noteElem.attribute("pos").toDouble();
+        n.len = noteElem.attribute("len").toDouble();
+        n.key = noteElem.attribute("key").toInt();
+        parsedNotes.push_back(n);
+    }
+
+
+    std::sort(parsedNotes.begin(), parsedNotes.end(), [](const XptNote& a, const XptNote& b) {
+        if (a.pos == b.pos) return a.key > b.key;
+        return a.pos < b.pos;
+    });
+
+    m_editorX.clear();
+    m_editorY.clear();
+
+    double baseVal = m_spinLfoBaseValue->value();
+    double scalePerSemi = m_spinLfoDepth->value() * 0.01; // Depth controls the "Voltage per Octave" spread
+    double currentX = 0;
+    double maxPos = 0;
+
+    for (const auto& n : parsedNotes) {
+
+        if (n.pos < currentX) continue;
+
+        double yVal = baseVal + ((n.key - 60) * scalePerSemi);
+
+
+        m_editorX.append(n.pos);
+        m_editorY.append(yVal);
+
+
+        m_editorX.append(n.pos + n.len - 1.0);
+        m_editorY.append(yVal);
+
+        currentX = n.pos + n.len;
+        if (currentX > maxPos) maxPos = currentX;
+    }
+
+
+    m_comboInterpolation->setCurrentIndex(0); // Force "Discrete / Step" mode for pure CV gating
+
+    if (maxPos > m_spinLfoLengthTicks->value()) {
+        m_spinLfoLengthTicks->setValue(maxPos); // Extend canvas if pattern is long
+    }
+
+    updateEditorPlot();
+    QMessageBox::information(this, "Success", "Notes converted to CV!\n\nTip: Use the 'Scale Y Amplitude' button to adjust the voltage range.");
 }
