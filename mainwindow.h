@@ -93,6 +93,11 @@ private slots:
     void onScaleYAmplitudeClicked();
     void onExtractEnvelopeClicked();
 
+    void onLoadModGrooveClicked();
+    void onLoadMidiGrooveClicked();
+    void onLoadMmpGrooveClicked();
+    void onExportNewMmpClicked();
+
 private:
     struct ExtractedNote {
         int midiNote = 0;
@@ -254,6 +259,14 @@ private:
     QCheckBox *m_checkSnapGrid;
     QComboBox *m_comboQuantizeX;
 
+    QWidget *m_tabGroove;
+    QTableWidget *m_bbTable;
+    QSpinBox *m_spinStartPattern;
+    QComboBox *m_comboModChannel;
+    QComboBox *m_comboGridSize;
+    QByteArray m_currentModData;
+    void processModData();
+
     struct ParsedTrack {
         QString trackName;
         QDomElement trackElement;
@@ -269,5 +282,7 @@ private:
         float process(float in);
     };
 };
+
+
 
 #endif // MAINWINDOW_H

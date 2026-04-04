@@ -709,6 +709,66 @@ void MainWindow::setupUI()
     connect(m_spinSwing, &QDoubleSpinBox::valueChanged, this, [this](){ onGenerateLfoClicked(); });
 
     m_mainTabs->addTab(m_tabAutomation, "4. Automation Macros");
+
+    // ========================================================
+    // TAB 5: GROOVE EXTRACTOR (.mod / .mid / .mmp to BB-Editor)
+    // ========================================================
+    m_tabGroove = new QWidget();
+    QVBoxLayout *grooveLayout = new QVBoxLayout(m_tabGroove);
+
+    QHBoxLayout *grooveTopLayout = new QHBoxLayout();
+
+    QPushButton *btnLoadModGroove = new QPushButton("1. Load Amiga .mod");
+    btnLoadModGroove->setStyleSheet("font-weight: bold; padding: 5px;");
+
+    QPushButton *btnLoadMidiGroove = new QPushButton("Load .mid TBC");
+    QPushButton *btnLoadMmpGroove = new QPushButton("1. Load .mmp (BB Track)");
+
+    m_spinStartPattern = new QSpinBox();
+    m_spinStartPattern->setRange(0, 128);
+    m_spinStartPattern->setPrefix("Start Pattern: ");
+
+    m_comboModChannel = new QComboBox();
+    m_comboModChannel->addItems({"All Channels", "Channel 1", "Channel 2", "Channel 3", "Channel 4", "Channel 5", "Channel 6", "Channel 7", "Channel 8"});
+
+    m_comboGridSize = new QComboBox();
+    m_comboGridSize->addItems({"16 Steps", "32 Steps", "64 Steps (Full MOD Pattern)"});
+    m_comboGridSize->setCurrentIndex(2);
+
+    grooveTopLayout->addWidget(btnLoadModGroove);
+    grooveTopLayout->addWidget(btnLoadMidiGroove);
+    grooveTopLayout->addWidget(btnLoadMmpGroove);
+    grooveTopLayout->addWidget(m_spinStartPattern);
+    grooveTopLayout->addWidget(m_comboModChannel); // <--- Added here
+    grooveTopLayout->addWidget(m_comboGridSize);
+    grooveTopLayout->addStretch();
+
+    grooveLayout->addLayout(grooveTopLayout);
+
+    grooveLayout->addWidget(new QLabel("<h3>Tracker Extractor Grid</h3>"));
+
+    m_bbTable = new QTableWidget(0, 64);
+    m_bbTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    m_bbTable->setSelectionMode(QAbstractItemView::MultiSelection);
+    grooveLayout->addWidget(m_bbTable, 1);
+
+    QHBoxLayout *grooveBottomLayout = new QHBoxLayout();
+    QPushButton *btnExportNewMmp = new QPushButton("Save as NEW .mmp Project");
+    btnExportNewMmp->setStyleSheet("background-color: #2E8B57; color: white; font-weight: bold; padding: 10px;");
+    btnExportNewMmp->setEnabled(false); // Disabled until we load something
+
+    grooveBottomLayout->addStretch();
+    grooveBottomLayout->addWidget(btnExportNewMmp);
+    grooveLayout->addLayout(grooveBottomLayout);
+
+    m_mainTabs->addTab(m_tabGroove, "5. Amiga Module Drum Extractor");
+
+    connect(btnLoadModGroove, &QPushButton::clicked, this, &MainWindow::onLoadModGrooveClicked);
+    connect(btnLoadMidiGroove, &QPushButton::clicked, this, &MainWindow::onLoadMidiGrooveClicked);
+    connect(btnLoadMmpGroove, &QPushButton::clicked, this, &MainWindow::onLoadMmpGrooveClicked);
+    connect(btnExportNewMmp, &QPushButton::clicked, this, &MainWindow::onExportNewMmpClicked);
+    connect(m_spinStartPattern, &QSpinBox::valueChanged, this, &MainWindow::processModData);
+    connect(m_comboModChannel, &QComboBox::currentIndexChanged, this, &MainWindow::processModData);
 }
 
 void MainWindow::openFile()
@@ -1145,7 +1205,7 @@ void MainWindow::exportLMMSSurgical()
     out << "  </pattern>\n";
     out << "</lmms-project>\n";
     file.close();
-    QMessageBox::information(this, "Success", "Exported high-resolution LMMS pattern with velocity dynamics!");
+    QMessageBox::information(this, "Success", "Exported!");
 }
 
 void MainWindow::onStepsChanged() { m_numSteps = m_comboSteps->currentIndex() == 0 ? 16 : 32; m_stepTable->setColumnCount(m_numSteps); }
@@ -1553,7 +1613,7 @@ void MainWindow::exportLMMSProject()
 
     file.close();
     m_progressBar->setVisible(false);
-    QMessageBox::information(this, "Success", "Analyzed the whole song and generated multi-track LMMS project!");
+    QMessageBox::information(this, "Success", "Analysed the whole song and generated multi-track LMMS project!");
 }
 
 
@@ -2253,11 +2313,12 @@ void MainWindow::onLoadMmpClicked()
         return;
     }
 
-    QString errorStr;
-    int errorLine, errorColumn;
+    QDomDocument::ParseResult result = m_mmpDocument.setContent(&file);
 
-    if (!m_mmpDocument.setContent(&file, &errorStr, &errorLine, &errorColumn)) {
-        QMessageBox::warning(this, "Parse Error", QString("XML Parse Error at line %1, col %2: %3").arg(errorLine).arg(errorColumn).arg(errorStr));
+    if (!result) {
+        QMessageBox::warning(this, "Parse Error",
+                             QString("XML Parse Error at line %1, col %2: %3")
+                                 .arg(result.errorLine).arg(result.errorColumn).arg(result.errorMessage));
         file.close();
         return;
     }
@@ -3134,4 +3195,426 @@ void MainWindow::onExtractEnvelopeClicked()
     m_comboInterpolation->setCurrentIndex(2);
 
     updateEditorPlot();
+}
+
+void MainWindow::onLoadModGrooveClicked()
+{
+    QString fileName = QFileDialog::getOpenFileName(this, "Open Amiga .mod", "", "Tracker Modules (*.mod)");
+    if (fileName.isEmpty()) return;
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly)) {
+        QMessageBox::warning(this, "Error", "Could not open .mod file.");
+        return;
+    }
+
+    // Save the file to memory so the spinbox/dropdown can instantly re-read it
+    m_currentModData = file.readAll();
+    file.close();
+
+    processModData(); // Run the math
+}
+
+void MainWindow::processModData()
+{
+    if (m_currentModData.isEmpty() || m_currentModData.size() < 1084) return;
+
+    QString sig = QString::fromLatin1(m_currentModData.mid(1080, 4));
+    int channels = 4; // Default
+    if (sig == "6CHN") channels = 6;
+    else if (sig == "8CHN" || sig == "OCTA" || sig == "CD81") channels = 8;
+
+    QStringList instrumentNames;
+    instrumentNames.append("None");
+    for (int i = 0; i < 31; ++i) {
+        int offset = 20 + (i * 30);
+        QByteArray nameBytes = m_currentModData.mid(offset, 22);
+
+        int nullIdx = nameBytes.indexOf('\0');
+        if (nullIdx != -1) nameBytes.truncate(nullIdx);
+
+        QString name = QString::fromLatin1(nameBytes).trimmed();
+        if (name.isEmpty()) name = QString("Inst %1").arg(i + 1);
+        instrumentNames.append(name);
+    }
+
+    int targetPattern = m_spinStartPattern->value();
+    int targetChannel = m_comboModChannel->currentIndex() - 1;
+
+    m_bbTable->setRowCount(0);
+    m_bbTable->setColumnCount(64);
+
+
+    int patternStartOffset = 1084 + (targetPattern * 64 * channels * 4);
+    if (patternStartOffset + (64 * channels * 4) > m_currentModData.size()) return;
+
+    QMap<int, int> instToTableRow;
+
+    for (int row = 0; row < 64; ++row) {
+        for (int ch = 0; ch < channels; ++ch) {
+            if (targetChannel != -1 && ch != targetChannel) continue;
+
+            int byteOffset = patternStartOffset + (row * channels * 4) + (ch * 4);
+            unsigned char b0 = m_currentModData[byteOffset];
+            unsigned char b1 = m_currentModData[byteOffset + 1];
+            unsigned char b2 = m_currentModData[byteOffset + 2];
+            unsigned char b3 = m_currentModData[byteOffset + 3];
+            (void)b3;
+            int inst = (b0 & 0xF0) | ((b2 & 0xF0) >> 4);
+            int period = ((b0 & 0x0F) << 8) | b1;
+            int effect = b2 & 0x0F;
+
+            if (inst > 0 || period > 0) {
+                int activeInst = (inst > 0) ? inst : 999;
+
+                if (!instToTableRow.contains(activeInst)) {
+                    int newRow = m_bbTable->rowCount();
+                    m_bbTable->insertRow(newRow);
+                    QString rowLabel = (activeInst == 999) ? "Ghost Note (No Inst)" : QString("%1: %2").arg(activeInst).arg(instrumentNames[activeInst]);
+                    m_bbTable->setVerticalHeaderItem(newRow, new QTableWidgetItem(rowLabel));
+                    instToTableRow[activeInst] = newRow;
+                }
+
+                int tableRow = instToTableRow[activeInst];
+                QTableWidgetItem *item = m_bbTable->item(tableRow, row);
+                if (!item) {
+                    item = new QTableWidgetItem();
+                    item->setTextAlignment(Qt::AlignCenter);
+                    m_bbTable->setItem(tableRow, row, item);
+                }
+
+                QString cellText = "X";
+                if (period > 0) cellText = "Hit";
+                if (effect > 0) cellText += QString("\nFX:%1").arg(effect, 1, 16);
+
+                item->setText(cellText);
+                item->setBackground(QBrush(QColor(46, 139, 87, 150)));
+            }
+        }
+    }
+
+    QList<QPushButton*> buttons = m_tabGroove->findChildren<QPushButton*>();
+    for (QPushButton* btn : std::as_const(buttons)) {
+        if (btn->text().contains("NEW .mmp")) btn->setEnabled(true);
+    }
+}
+
+void MainWindow::onLoadMmpGrooveClicked()
+{
+    QString fileName = QFileDialog::getOpenFileName(this, "Open LMMS Project", "", "LMMS Project (*.mmp)");
+    if (fileName.isEmpty()) return;
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+
+    QDomDocument doc;
+    if (!doc.setContent(&file)) {
+        file.close();
+        QMessageBox::warning(this, "Parse Error", "Invalid XML in .mmp file.");
+        return;
+    }
+    file.close();
+
+    QDomNodeList trackContainers = doc.elementsByTagName("trackcontainer");
+    QDomElement bbContainer;
+
+    for (int i = 0; i < trackContainers.count(); ++i) {
+        if (trackContainers.at(i).toElement().attribute("type") == "bbtrackcontainer") {
+            bbContainer = trackContainers.at(i).toElement();
+            break;
+        }
+    }
+
+    if (bbContainer.isNull()) {
+        QMessageBox::warning(this, "Not Found", "No Beat/Bassline data found in this project.");
+        return;
+    }
+
+    m_bbTable->setRowCount(0);
+    int maxCols = 16;
+    m_bbTable->setColumnCount(maxCols);
+
+    QDomNodeList tracks = bbContainer.elementsByTagName("track");
+
+    if (tracks.isEmpty()) {
+        QMessageBox::information(this, "Empty Container", "The Beat/Bassline container exists, but it has no instruments inside it!");
+        return;
+    }
+
+    for (int i = 0; i < tracks.count(); ++i) {
+        QDomElement track = tracks.at(i).toElement();
+        QString trackName = track.attribute("name", "Unknown Track");
+
+        int newRow = m_bbTable->rowCount();
+        m_bbTable->insertRow(newRow);
+        m_bbTable->setVerticalHeaderItem(newRow, new QTableWidgetItem(trackName));
+
+        QDomNodeList patterns = track.elementsByTagName("pattern");
+        for (int p = 0; p < patterns.count(); ++p) {
+            QDomElement pattern = patterns.at(p).toElement();
+            int steps = pattern.attribute("steps", "16").toInt();
+
+            if (steps > maxCols) {
+                maxCols = steps;
+                m_bbTable->setColumnCount(maxCols);
+            }
+
+            QDomNodeList notes = pattern.elementsByTagName("note");
+            for (int n = 0; n < notes.count(); ++n) {
+                QDomElement note = notes.at(n).toElement();
+                int pos = note.attribute("pos").toInt();
+                int vol = note.attribute("vol", "100").toInt();
+
+                 int col = pos / 12;
+
+                if (col >= 0 && col < maxCols) {
+                    QTableWidgetItem *item = m_bbTable->item(newRow, col);
+                    if (!item) {
+                        item = new QTableWidgetItem();
+                        item->setTextAlignment(Qt::AlignCenter);
+                        m_bbTable->setItem(newRow, col, item);
+                    }
+                    item->setText(QString("Vol:%1").arg(vol));
+                    item->setBackground(QBrush(QColor(0, 150, 255, 150)));
+                }
+            }
+        }
+    }
+
+    QList<QPushButton*> buttons = m_tabGroove->findChildren<QPushButton*>();
+    for (QPushButton* btn : buttons) {
+        if (btn->text().contains("NEW .mmp")) btn->setEnabled(true);
+    }
+
+    QMessageBox::information(this, "Success", "Beat/Bassline tracks extracted from .mmp project!");
+}
+
+
+
+void MainWindow::onExportNewMmpClicked()
+{
+    if (m_bbTable->rowCount() == 0) {
+        QMessageBox::warning(this, "Empty", "No pattern data to export! Load a .mod file first.");
+        return;
+    }
+
+    QString savePath = QFileDialog::getSaveFileName(this, "Save LMMS Project", "Amiga_Groove.mmp", "LMMS Project (*.mmp)");
+    if (savePath.isEmpty()) return;
+
+    QFile file(savePath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, "Error", "Could not write to file.");
+        return;
+    }
+
+    QTextStream out(&file);
+
+
+    out << "<?xml version=\"1.0\"?>\n";
+    out << "<!DOCTYPE lmms-project>\n";
+    out << "<lmms-project version=\"20\" type=\"song\">\n";
+    out << "  <head bpm=\"125\" mastervol=\"100\" timesig_numerator=\"4\" timesig_denominator=\"4\"/>\n";
+    out << "  <song>\n";
+
+
+    out << "    <trackcontainer type=\"song\">\n";
+    out << "      <track type=\"1\" name=\"Amiga Imported Pattern\">\n";
+    out << "        <bbtrack>\n";
+    out << "          <trackcontainer type=\"bbtrackcontainer\">\n";
+
+
+    int numCols = m_bbTable->columnCount();
+    for (int row = 0; row < m_bbTable->rowCount(); ++row) {
+
+
+        QString trackName = m_bbTable->verticalHeaderItem(row)->text().toHtmlEscaped();
+
+
+        out << "            <track type=\"0\" name=\"" << trackName << "\">\n";
+        out << "              <instrumenttrack vol=\"100\" pan=\"0\" basenote=\"69\">\n";
+        out << "                <instrument name=\"kicker\">\n";
+        out << "                  <kicker startfreq=\"150\" endfreq=\"40\" decay=\"440\" dist=\"0.8\" click=\"0.4\">\n";
+        out << "                    <key/>\n";
+        out << "                  </kicker>\n";
+        out << "                </instrument>\n";
+        out << "              </instrumenttrack>\n";
+
+
+        out << "              <pattern type=\"0\" pos=\"0\" steps=\"" << numCols << "\">\n";
+
+
+        for (int col = 0; col < numCols; ++col) {
+            QTableWidgetItem *item = m_bbTable->item(row, col);
+            if (item && !item->text().isEmpty()) {
+
+
+                int lmmsPos = col * 12;
+
+                out << "                <note pos=\"" << lmmsPos << "\" key=\"69\" vol=\"100\" len=\"-192\" pan=\"0\"/>\n";
+            }
+        }
+
+        out << "              </pattern>\n";
+        out << "            </track>\n";
+    }
+
+    out << "          </trackcontainer>\n";
+    out << "        </bbtrack>\n";
+
+
+    out << "        <pattern type=\"1\" pos=\"0\" steps=\"" << numCols << "\" muted=\"0\" name=\"Extracted Groove\"/>\n";
+
+    out << "      </track>\n";
+    out << "    </trackcontainer>\n";
+    out << "  </song>\n";
+    out << "</lmms-project>\n";
+
+    file.close();
+    QMessageBox::information(this, "Success", "Groove exported! Open this .mmp in LMMS to see your tracks (with the blue box!).");
+}
+
+void MainWindow::onLoadMidiGrooveClicked()
+{
+    QString fileName = QFileDialog::getOpenFileName(this, "Open MIDI File", "", "MIDI Files (*.mid *.midi)");
+    if (fileName.isEmpty()) return;
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly)) return;
+    QByteArray data = file.readAll();
+    file.close();
+
+    int pos = 0;
+
+    auto readBe16 = [&](int& p) -> uint16_t {
+        if (p + 2 > data.size()) return 0;
+        uint16_t v = (uint8_t)data[p]<<8 | (uint8_t)data[p+1]; p += 2; return v;
+    };
+    auto readBe32 = [&](int& p) -> uint32_t {
+        if (p + 4 > data.size()) return 0;
+        uint32_t v = (uint8_t)data[p]<<24 | (uint8_t)data[p+1]<<16 | (uint8_t)data[p+2]<<8 | (uint8_t)data[p+3]; p += 4; return v;
+    };
+    auto readVLQ = [&](int& p) -> uint32_t {
+        uint32_t v = 0;
+        while (p < data.size()) {
+            uint8_t b = data[p++];
+            v = (v << 7) | (b & 0x7F);
+            if (!(b & 0x80)) break;
+        }
+        return v;
+    };
+
+
+    if (data.mid(0, 4) != "MThd") {
+        QMessageBox::warning(this, "Error", "Not a valid MIDI file.");
+        return;
+    }
+    pos += 4;
+    uint32_t headerLen = readBe32(pos);
+    int format = readBe16(pos);
+    int numTracks = readBe16(pos);
+    int ppq = readBe16(pos); // Ticks per quarter note
+
+    struct MidiHit { int tick; int note; int vel; };
+    QList<MidiHit> allHits;
+
+
+    for (int i = 0; i < numTracks; ++i) {
+        if (pos + 8 > data.size()) break;
+        if (data.mid(pos, 4) != "MTrk") {
+            pos += 4; uint32_t len = readBe32(pos); pos += len; continue;
+        }
+        pos += 4;
+        uint32_t trackLen = readBe32(pos);
+        int trackEnd = pos + trackLen;
+
+        int absTick = 0;
+        uint8_t lastStatus = 0;
+
+        while (pos < trackEnd && pos < data.size()) {
+            absTick += readVLQ(pos);
+            uint8_t status = data[pos];
+
+            if (status < 0x80) { status = lastStatus; } // Running status
+            else { pos++; lastStatus = status; }
+
+            if (status == 0xFF) { // Meta Event
+                pos++; uint32_t len = readVLQ(pos); pos += len;
+            } else if (status == 0xF0 || status == 0xF7) { // SysEx
+                uint32_t len = readVLQ(pos); pos += len;
+            } else { // Standard MIDI Event
+                uint8_t type = status & 0xF0;
+                uint8_t channel = status & 0x0F;
+
+                if (type == 0xC0 || type == 0xD0) { pos += 1; }
+                else {
+                    uint8_t d1 = data[pos++];
+                    uint8_t d2 = data[pos++];
+
+                    // 0x90 is Note On. Channel 9 is technically Channel 10 in zero-index MIDI.
+                    if (type == 0x90 && channel == 9 && d2 > 0) {
+                        allHits.append({absTick, d1, d2});
+                    }
+                }
+            }
+        }
+    }
+
+
+    int targetBar = m_spinStartPattern->value();
+    if (targetBar < 1) targetBar = 1; // MIDI Bars start at 1
+
+    double ticksPerStep = ppq / 4.0; // 1/16th note step length
+    int startTick = (targetBar - 1) * 4 * ppq; // 4 beats per bar
+
+    int numSteps = 64;
+    if (m_comboGridSize->currentIndex() == 0) numSteps = 16;
+    else if (m_comboGridSize->currentIndex() == 1) numSteps = 32;
+
+    int endTick = startTick + (numSteps * ticksPerStep);
+
+    m_bbTable->setRowCount(0);
+    m_bbTable->setColumnCount(numSteps);
+    QMap<int, int> noteToRow;
+
+
+    QMap<int, QString> gmDrums = {
+        {35, "Acoustic Bass Drum"}, {36, "Bass Drum 1"}, {37, "Side Stick"}, {38, "Acoustic Snare"},
+        {39, "Hand Clap"}, {40, "Electric Snare"}, {41, "Low Floor Tom"}, {42, "Closed Hi Hat"},
+        {43, "High Floor Tom"}, {44, "Pedal Hi-Hat"}, {45, "Low Tom"}, {46, "Open Hi-Hat"},
+        {49, "Crash Cymbal 1"}, {51, "Ride Cymbal 1"}, {56, "Cowbell"}
+    };
+
+    for (const MidiHit& hit : allHits) {
+        if (hit.tick >= startTick && hit.tick < endTick) {
+
+            int step = qRound((hit.tick - startTick) / ticksPerStep);
+
+            if (step >= 0 && step < numSteps) {
+                if (!noteToRow.contains(hit.note)) {
+                    int newRow = m_bbTable->rowCount();
+                    m_bbTable->insertRow(newRow);
+                    QString name = gmDrums.value(hit.note, QString("MIDI Note %1").arg(hit.note));
+                    m_bbTable->setVerticalHeaderItem(newRow, new QTableWidgetItem(name));
+                    noteToRow[hit.note] = newRow;
+                }
+
+                int row = noteToRow[hit.note];
+                QTableWidgetItem *item = m_bbTable->item(row, step);
+                if (!item) {
+                    item = new QTableWidgetItem();
+                    item->setTextAlignment(Qt::AlignCenter);
+                    m_bbTable->setItem(row, step, item);
+                }
+                item->setText(QString("Hit\nVol:%1").arg(hit.vel));
+                item->setBackground(QBrush(QColor(138, 43, 226, 150))); // Cool Purple for MIDI hits
+            }
+        }
+    }
+
+    QList<QPushButton*> buttons = m_tabGroove->findChildren<QPushButton*>();
+    for (QPushButton* btn : std::as_const(buttons)) {
+        if (btn->text().contains("NEW .mmp")) btn->setEnabled(true);
+    }
+
+    QMessageBox::information(this, "MIDI Loaded", QString("Extracted %1 unique drum tracks from Bar %2!").arg(m_bbTable->rowCount()).arg(targetBar));
 }
