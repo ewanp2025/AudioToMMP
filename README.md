@@ -17,7 +17,8 @@
   * **MIDI-to-CV Conversion:** Load an LMMS `.xpt` pattern and automatically convert the notes into stepped automation (Control Voltage) using highest note priority. 
   * **Shape Presets:** Save and load custom automation shapes using the dedicated `.xpa` (XML Pattern Automation) file format.
 * **Visual Data:** Features detailed spectrogram and waveform visualisers to help you see exactly what you are extracting.
-
+* **VAmiga Module Drum Extractor:** Extract drum patterns from Amiga modules and export to LMMS.
+* 
 ### Current State
 Functional note detection, offset/BPM detection, and full `.mmp` generation is implemented. Chord detection (Template Matching and Peak Picking) is currently active but needs further refinement.
 
