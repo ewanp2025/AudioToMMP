@@ -18,6 +18,7 @@
   * **Shape Presets:** Save and load custom automation shapes using the dedicated `.xpa` (XML Pattern Automation) file format.
 * **Visual Data:** Features detailed spectrogram and waveform visualisers to help you see exactly what you are extracting.
 * **Amiga Module Drum Extractor:** Extract drum patterns from Amiga modules and export to LMMS.
+* **303 Test:** Test to see if the code could generate a TB-303 style baseline with cutoff and resonance automation.
   
 ### Current State
 Functional note detection, offset/BPM detection, and full `.mmp` generation is implemented. Chord detection (Template Matching and Peak Picking) is currently active but needs further refinement.
