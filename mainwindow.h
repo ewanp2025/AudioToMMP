@@ -98,6 +98,7 @@ private slots:
     void onLoadMmpGrooveClicked();
     void onExportNewMmpClicked();
     void generate303Project();
+    void on303PatternChanged(int index);
 
 private:
     struct ExtractedNote {
@@ -270,13 +271,21 @@ private:
 
     QWidget *m_tab303Test;
     QComboBox *m_combo303NotePattern;
-    QComboBox *m_combo303Macro;
     QComboBox *m_combo303Pattern;
     QSpinBox *m_spin303Bpm;
     QDoubleSpinBox *m_spin303Cutoff;
     QDoubleSpinBox *m_spin303EnvMod;
     QDoubleSpinBox *m_spin303Resonance;
+    QSpinBox *m_spin303TotalBars;
     QPushButton *m_btnGenerate303;
+    QCheckBox *m_checkParseSlides;
+    QTableWidget *m_seqTable;
+    QTableWidget *m_freqTable;
+    QTableWidget *m_resTable;
+    void onFilterPatternChanged(int index);
+    void onFilterLengthChanged(int steps);
+    QComboBox *m_comboFilterPattern;
+    QSpinBox *m_spinFilterLength;
 
     struct ParsedTrack {
         QString trackName;

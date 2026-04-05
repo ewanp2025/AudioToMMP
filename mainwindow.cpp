@@ -755,7 +755,7 @@ void MainWindow::setupUI()
     QHBoxLayout *grooveBottomLayout = new QHBoxLayout();
     QPushButton *btnExportNewMmp = new QPushButton("Save as NEW .mmp Project");
     btnExportNewMmp->setStyleSheet("background-color: #2E8B57; color: white; font-weight: bold; padding: 10px;");
-    btnExportNewMmp->setEnabled(false); // Disabled until we load something
+    btnExportNewMmp->setEnabled(false);
 
     grooveBottomLayout->addStretch();
     grooveBottomLayout->addWidget(btnExportNewMmp);
@@ -779,20 +779,35 @@ void MainWindow::setupUI()
     QHBoxLayout *controlsLayout1 = new QHBoxLayout();
 
     m_combo303NotePattern = new QComboBox();
-    m_combo303NotePattern->addItems({"Classic 16-Step", "Syncopated 5-Step", "Rolling 12-Step"});
-    controlsLayout1->addWidget(new QLabel("Note Pattern:"));
-    controlsLayout1->addWidget(m_combo303NotePattern);
+        m_combo303NotePattern->addItems({
+            "Classic 16-Step", "Syncopated 5-Step", "Rolling 12-Step",
+            "A", "B", "The Octave Squelch",
+            "C", "D",
+            "E", "F", "G"
+        });
+        controlsLayout1->addWidget(new QLabel("Note Pattern:"));
+        controlsLayout1->addWidget(m_combo303NotePattern);
 
-    m_combo303Macro = new QComboBox();
-    m_combo303Macro->addItems({"Static (Use Knobs)", "Slow 16-Bar Build", "Tension Drop (High Res)"});
-    controlsLayout1->addWidget(new QLabel("Macro Automation:"));
-    controlsLayout1->addWidget(m_combo303Macro);
+    connect(m_combo303NotePattern, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::on303PatternChanged);
+
+
+    ///controlsLayout1->addWidget(m_combo303Macro);
 
     m_spin303Bpm = new QSpinBox();
     m_spin303Bpm->setRange(60, 200);
     m_spin303Bpm->setValue(125);
     controlsLayout1->addWidget(new QLabel("BPM:"));
     controlsLayout1->addWidget(m_spin303Bpm);
+
+    m_spin303TotalBars = new QSpinBox();
+    m_spin303TotalBars->setRange(1, 128);
+    m_spin303TotalBars->setValue(16);
+    controlsLayout1->addWidget(new QLabel("Total Bars:"));
+    controlsLayout1->addWidget(m_spin303TotalBars);
+
+    m_checkParseSlides = new QCheckBox("Detuning Slides", this);
+    m_checkParseSlides->setChecked(true);
+    controlsLayout1->addWidget(m_checkParseSlides);
 
     layout303->addLayout(controlsLayout1);
 
@@ -821,13 +836,93 @@ void MainWindow::setupUI()
 
     layout303->addLayout(controlsLayout2);
 
-    m_btnGenerate303 = new QPushButton("Generate Self-Contained 303 Project");
-    layout303->addWidget(m_btnGenerate303);
-    layout303->addStretch();
+
+
+            layout303->addWidget(new QLabel("<h3>Main Sequencer (16 Steps)</h3>"));
+
+
+                m_seqTable = new QTableWidget(5, 16, this);
+                m_seqTable->setVerticalHeaderLabels({"State", "Note", "Octave", "Slide", "Accent"});
+                m_seqTable->setFixedHeight(175);
+
+                for (int col = 0; col < 16; ++col) {
+                    QComboBox *stateCombo = new QComboBox();
+                    stateCombo->addItems({"Play", "Tie", "Rest"});
+                    m_seqTable->setCellWidget(0, col, stateCombo);
+
+                    QComboBox *noteCombo = new QComboBox();
+                    noteCombo->addItems({"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"});
+                    m_seqTable->setCellWidget(1, col, noteCombo);
+
+                    QSpinBox *octaveSpin = new QSpinBox();
+                    octaveSpin->setRange(1, 6); octaveSpin->setValue(3);
+                    m_seqTable->setCellWidget(2, col, octaveSpin);
+
+                    QCheckBox *slideCheck = new QCheckBox("Slide");
+                    m_seqTable->setCellWidget(3, col, slideCheck);
+
+                    QCheckBox *accentCheck = new QCheckBox("Acc");
+                    m_seqTable->setCellWidget(4, col, accentCheck);
+                }
+                layout303->addWidget(m_seqTable);
+
+
+                QHBoxLayout *filterHeaderLayout = new QHBoxLayout();
+                filterHeaderLayout->addWidget(new QLabel("<h3>Filter Automation (Polymeter)</h3>"));
+
+                m_comboFilterPattern = new QComboBox();
+                    m_comboFilterPattern->addItems({
+                        "Manual",
+                        "3-Step Squelch",
+                        "5-Step Tension",
+                        "7-Step Demented",
+                        "16-Step Classic Sine",
+                        "24-Step Bubbler",
+                        "12-Step Rolling Reso",
+                        "32-Step Slow Filter Sweep",
+                        "9-Step Syncopated Chirp",
+                        "64-Step Evolving"
+                    });
+                filterHeaderLayout->addWidget(new QLabel("Preset:"));
+                filterHeaderLayout->addWidget(m_comboFilterPattern);
+
+                m_spinFilterLength = new QSpinBox();
+                m_spinFilterLength->setRange(1, 128);
+                m_spinFilterLength->setValue(32);
+                filterHeaderLayout->addWidget(new QLabel("Length (Steps):"));
+                filterHeaderLayout->addWidget(m_spinFilterLength);
+                filterHeaderLayout->addStretch();
+                layout303->addLayout(filterHeaderLayout);
+
+                connect(m_comboFilterPattern, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::onFilterPatternChanged);
+                connect(m_spinFilterLength, QOverload<int>::of(&QSpinBox::valueChanged), this, &MainWindow::onFilterLengthChanged);
+
+
+                m_freqTable = new QTableWidget(1, 32, this);
+                m_freqTable->setVerticalHeaderLabels({"Cutoff"});
+                m_freqTable->setFixedHeight(80);
+                layout303->addWidget(m_freqTable);
+
+
+                m_resTable = new QTableWidget(1, 32, this);
+                m_resTable->setVerticalHeaderLabels({"Resonance"});
+                m_resTable->setFixedHeight(80);
+                layout303->addWidget(m_resTable);
+
+
+                onFilterLengthChanged(32);
+
+                m_btnGenerate303 = new QPushButton("Generate Self-Contained 303 Project");
+                layout303->addWidget(m_btnGenerate303);
+                layout303->addStretch();
+                connect(m_btnGenerate303, &QPushButton::clicked, this, &MainWindow::generate303Project);
+
+
+
 
     m_mainTabs->addTab(m_tab303Test, "303 Test");
 
-    connect(m_btnGenerate303, &QPushButton::clicked, this, &MainWindow::generate303Project);
+
 }
 
 void MainWindow::openFile()
@@ -3667,7 +3762,7 @@ void MainWindow::onLoadMidiGrooveClicked()
                     m_bbTable->setItem(row, step, item);
                 }
                 item->setText(QString("Hit\nVol:%1").arg(hit.vel));
-                item->setBackground(QBrush(QColor(138, 43, 226, 150))); // Cool Purple for MIDI hits
+                item->setBackground(QBrush(QColor(138, 43, 226, 150)));
             }
         }
     }
@@ -3701,11 +3796,17 @@ void MainWindow::generate303Project() {
           </eldata>
         </instrumenttrack>
       </track>
-      <track type="5" name="Cutoff Automation">
+<track type="5" name="Cutoff Automation">
         <automationtrack/>
         <automationpattern name="Sweep" prog="0" tens="1" len="%2" pos="0">
           <object id="14001"/>
-          </automationpattern>
+        </automationpattern>
+      </track>
+      <track type="5" name="Resonance Automation" solo="0" muted="0" mutedBeforeSolo="0">
+        <automationtrack/>
+        <automationpattern prog="2" name="303-Test>Envelopes/LFOs>Q/Resonance" pos="0" mute="0" len="%2" tens="1">
+          <object id="30821"/>
+        </automationpattern>
       </track>
     </trackcontainer>
   </song>
@@ -3713,128 +3814,344 @@ void MainWindow::generate303Project() {
 
 
     int bpm = m_spin303Bpm->value();
-    double C_base = m_spin303Cutoff->value();
-    double E_mod = m_spin303EnvMod->value();
-    double R_base = m_spin303Resonance->value();
+        double C_base = m_spin303Cutoff->value();
+        double E_mod = m_spin303EnvMod->value();
+        double R_base = m_spin303Resonance->value();
 
-    int ticksPerStep = 48;
-    double step_time = 60.0 / bpm / 4.0;
+        int ticksPerStep = 12;
+        double step_time = 60.0 / bpm / 4.0;
 
-    struct Step { int note; bool accent; bool slide; };
-    std::vector<Step> pattern;
+        int totalBars = m_spin303TotalBars->value();
+        int totalSteps = totalBars * 16;
+        int totalTicks = totalSteps * ticksPerStep;
 
-    int noteSel = m_combo303NotePattern->currentIndex();
-    if (noteSel == 0) {
-        pattern = {
-            {36, false, false}, {36, true, false}, {48, true, true}, {48, false, false},
-            {39, false, false}, {39, true, false}, {36, true, false}, {36, true, false},
-            {48, false, false}, {48, false, true}, {51, true, false}, {36, false, false},
-            {36, true, false}, {36, true, true}, {43, true, false}, {36, false, false}
-        };
-    } else if (noteSel == 1) {
-        pattern = {{36, true, false}, {48, false, true}, {48, true, false}, {39, false, false}, {41, true, false}};
-    } else {
-        pattern = {
-            {36, false, false}, {36, false, true}, {48, true, false}, {36, false, false},
-            {39, false, false}, {39, true, true},  {51, true, false}, {36, false, false},
-            {43, true, false},  {36, false, false}, {36, true, false}, {48, false, false}
-        };
-    }
+        QString filledXml = xmlTemplate.arg(bpm).arg(totalTicks);
+        QDomDocument doc;
+        doc.setContent(filledXml);
 
-    int totalBars = 16;
-    int totalSteps = totalBars * 16;
-    int totalTicks = totalSteps * ticksPerStep;
+        QDomElement instrumentTrackNode = doc.elementsByTagName("track").at(0).toElement();
+        QDomElement cutoffTrackNode = doc.elementsByTagName("track").at(1).toElement();
+        QDomElement autoPattern = cutoffTrackNode.firstChildElement("automationpattern");
+        QDomElement resTrackNode = doc.elementsByTagName("track").at(2).toElement();
+        QDomElement resPattern = resTrackNode.firstChildElement("automationpattern");
 
+        QDomElement sequencePattern = doc.createElement("pattern");
+        sequencePattern.setAttribute("pos", 0);
+        sequencePattern.setAttribute("steps", totalSteps);
+        sequencePattern.setAttribute("type", 0);
 
-    QString filledXml = xmlTemplate.arg(bpm).arg(totalTicks);
-    QDomDocument doc;
-    doc.setContent(filledXml);
+        double v_cap = 0.0;
+        int currentTick = 0;
+        QDomElement lastNote;
 
+        for (int stepCounter = 0; stepCounter < totalSteps; ++stepCounter) {
 
-    QDomElement instrumentTrackNode = doc.elementsByTagName("track").at(0).toElement();
-    QDomElement autoTrackNode = doc.elementsByTagName("track").at(1).toElement(); // Target type="5" track
-    QDomElement autoPattern = autoTrackNode.firstChildElement("automationpattern");
+            int seqCol = stepCounter % 16;
+            QComboBox *stateCombo = qobject_cast<QComboBox*>(m_seqTable->cellWidget(0, seqCol));
+            QComboBox *noteCombo = qobject_cast<QComboBox*>(m_seqTable->cellWidget(1, seqCol));
+            QSpinBox *octaveSpin = qobject_cast<QSpinBox*>(m_seqTable->cellWidget(2, seqCol));
+            QCheckBox *slideCheck = qobject_cast<QCheckBox*>(m_seqTable->cellWidget(3, seqCol));
+            QCheckBox *accentCheck = qobject_cast<QCheckBox*>(m_seqTable->cellWidget(4, seqCol));
 
-
-    QDomElement sequencePattern = doc.createElement("pattern");
-    sequencePattern.setAttribute("pos", 0);
-    sequencePattern.setAttribute("steps", totalSteps);
-    sequencePattern.setAttribute("type", 0);
+            int stepState = stateCombo->currentIndex();
+            int stepNote = (octaveSpin->value() + 1) * 12 + noteCombo->currentIndex();
+            bool stepAccent = accentCheck->isChecked();
+            bool stepSlide = slideCheck->isChecked();
 
 
-    double v_cap = 0.0;
-    int currentTick = 0;
-    int patternIdx = 0;
-
-    for (int stepCounter = 0; stepCounter < totalSteps; ++stepCounter) {
-        const auto& step = pattern[patternIdx];
+            int nextSeqCol = (stepCounter + 1) % 16;
+            QComboBox *nextNoteCombo = qobject_cast<QComboBox*>(m_seqTable->cellWidget(1, nextSeqCol));
+            QSpinBox *nextOctaveSpin = qobject_cast<QSpinBox*>(m_seqTable->cellWidget(2, nextSeqCol));
+            int nextNote = (nextOctaveSpin->value() + 1) * 12 + nextNoteCombo->currentIndex();
 
 
-        double currentC_base = C_base;
-        double currentR = R_base;
-        if (m_combo303Macro->currentIndex() == 1) {
-            currentC_base = std::min(1.0, C_base + (0.5 * ((double)stepCounter / totalSteps)));
-        } else if (m_combo303Macro->currentIndex() == 2) {
-            currentR = 0.95;
-            currentC_base = (stepCounter > (totalSteps / 2)) ? 0.8 : 0.2;
+            int filterLen = m_spinFilterLength->value();
+            int filterCol = stepCounter % filterLen;
+            QSlider *freqSlider = qobject_cast<QSlider*>(m_freqTable->cellWidget(0, filterCol));
+            QSlider *resSlider = qobject_cast<QSlider*>(m_resTable->cellWidget(0, filterCol));
+
+            double currentC_base = freqSlider ? (freqSlider->value() / 100.0) : 0.5;
+            double currentR = resSlider ? (resSlider->value() / 100.0) : 0.5;
+            double currentE_mod = m_spin303EnvMod->value();
+
+            double tau_d = 0.1 + (currentR * 0.4);
+            double tau_c = 0.05 + (currentR * 0.2);
+
+
+            auto addAutoNode = [&](int tickOffset, double val, double resVal) {
+                double mappedVal = 3000.0 + (val * 8000.0);
+                QDomElement timeNode = doc.createElement("time");
+                timeNode.setAttribute("pos", static_cast<int>(currentTick + tickOffset));
+                timeNode.setAttribute("value", QString::number(mappedVal, 'f', 2));
+                timeNode.setAttribute("outValue", QString::number(mappedVal, 'f', 2));
+                autoPattern.insertBefore(timeNode, autoPattern.firstChildElement("object"));
+
+                double mappedRes = 0.1 + (resVal * 9.9);
+                QDomElement resNode = doc.createElement("time");
+                resNode.setAttribute("pos", static_cast<int>(currentTick + tickOffset));
+                resNode.setAttribute("value", QString::number(mappedRes, 'f', 2));
+                resNode.setAttribute("outValue", QString::number(mappedRes, 'f', 2));
+                resPattern.insertBefore(resNode, resPattern.firstChildElement("object"));
+            };
+
+
+            if (stepState == 2) { // REST
+                currentTick += ticksPerStep;
+                v_cap = v_cap * std::exp(-step_time / tau_d); // Let envelope decay
+                addAutoNode(0, currentC_base + (currentE_mod * 0.2), currentR);
+                addAutoNode(6, currentC_base, currentR);
+                continue;
+            }
+
+            if (stepState == 1) { // TIE
+                if (!lastNote.isNull()) {
+                    int oldLen = lastNote.attribute("len").toInt();
+                    lastNote.setAttribute("len", QString::number(oldLen + ticksPerStep));
+                }
+                currentTick += ticksPerStep;
+                v_cap = v_cap * std::exp(-step_time / tau_d);
+                addAutoNode(0, currentC_base + (currentE_mod * 0.2), currentR);
+                continue;
+            }
+
+            QDomElement n = doc.createElement("note");
+            n.setAttribute("key", stepNote);
+            n.setAttribute("vol", stepAccent ? 127 : 80);
+            n.setAttribute("pos", currentTick);
+            n.setAttribute("len", stepSlide ? 14 : 6);
+
+            if (m_checkParseSlides->isChecked() && stepSlide) {
+                double slideTargetValue = (nextNote - stepNote);
+
+                QDomElement autoPat = doc.createElement("automationpattern");
+                QDomElement detuning = doc.createElement("detuning");
+                detuning.setAttribute("name", "Note detuning");
+                detuning.setAttribute("mute", "0");
+                detuning.setAttribute("tens", "1");
+                detuning.setAttribute("prog", "1");
+                detuning.setAttribute("len", "12");
+                detuning.setAttribute("pos", "0");
+
+                QDomElement time1 = doc.createElement("time");
+                time1.setAttribute("value", "0");
+                time1.setAttribute("outValue", "0");
+                time1.setAttribute("pos", "0");
+
+                QDomElement time2 = doc.createElement("time");
+                time2.setAttribute("value", QString::number(slideTargetValue));
+                time2.setAttribute("outValue", QString::number(slideTargetValue));
+                time2.setAttribute("pos", "12");
+
+                detuning.appendChild(time1);
+                detuning.appendChild(time2);
+                autoPat.appendChild(detuning);
+                n.appendChild(autoPat);
+            }
+
+            sequencePattern.appendChild(n);
+            lastNote = n;
+
+            if (stepAccent) {
+                v_cap = v_cap * std::exp(-step_time / tau_d) + 1.0 * (1.0 - std::exp(-0.05 / tau_c));
+                double peak = currentC_base + (currentE_mod * 0.4) + (currentR * v_cap * 0.5);
+                if (peak > 1.0) peak = 1.0;
+
+                addAutoNode(0, peak, currentR);
+                addAutoNode(1, peak * 0.8, currentR);
+                addAutoNode(6, peak * 0.3, currentR);
+                addAutoNode(19, currentC_base, currentR);
+            } else {
+                v_cap = v_cap * std::exp(-step_time / tau_d);
+                addAutoNode(0, currentC_base + (currentE_mod * 0.2), currentR);
+                addAutoNode(6, currentC_base, currentR);
+            }
+
+            currentTick += ticksPerStep;
         }
 
-        double tau_d = 0.1 + (currentR * 0.4);
-        double tau_c = 0.05 + (currentR * 0.2);
+        instrumentTrackNode.appendChild(sequencePattern);
 
-
-        QDomElement n = doc.createElement("note");
-        n.setAttribute("key", step.note);
-        n.setAttribute("vol", step.accent ? 127 : 80);
-        n.setAttribute("pos", currentTick);
-        n.setAttribute("len", step.slide ? 52 : 24);
-        sequencePattern.appendChild(n);
-
-
-        auto addAutoNode = [&](int tickOffset, double val) {
-
-            double mappedVal = 3000.0 + (val * 8000.0);
-
-
-            QDomElement timeNode = doc.createElement("time");
-            timeNode.setAttribute("pos", static_cast<int>(currentTick + tickOffset));
-            timeNode.setAttribute("value", QString::number(mappedVal, 'f', 2));
-            timeNode.setAttribute("outValue", QString::number(mappedVal, 'f', 2));
-
-
-            autoPattern.insertBefore(timeNode, autoPattern.firstChildElement("object"));
-        };
-
-        if (step.accent) {
-            v_cap = v_cap * std::exp(-step_time / tau_d) + 1.0 * (1.0 - std::exp(-0.05 / tau_c));
-            double peak = currentC_base + (E_mod * 0.4) + (currentR * v_cap * 0.5);
-            if (peak > 1.0) peak = 1.0;
-
-            addAutoNode(0, peak);
-            addAutoNode(4, peak * 0.8);
-            addAutoNode(24, peak * 0.3);
-            addAutoNode(76, currentC_base);
-        } else {
-            v_cap = v_cap * std::exp(-step_time / tau_d);
-            addAutoNode(0, currentC_base + (E_mod * 0.2));
-            addAutoNode(24, currentC_base);
-        }
-
-        currentTick += ticksPerStep;
-        patternIdx = (patternIdx + 1) % pattern.size();
-    }
-
-    instrumentTrackNode.appendChild(sequencePattern);
-
-
-    QString savePath = QFileDialog::getSaveFileName(this, "Save 303 Project", QDir::currentPath(), "LMMS Project (*.mmp)");
-    if (!savePath.isEmpty()) {
-        QFile outFile(savePath);
-        if (outFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-            QTextStream stream(&outFile);
-            stream << doc.toString(2);
-            outFile.close();
-            QMessageBox::information(this, "Success", "Project generated successfully!");
+        QString savePath = QFileDialog::getSaveFileName(this, "Save 303 Project", QDir::currentPath(), "LMMS Project (*.mmp)");
+        if (!savePath.isEmpty()) {
+            QFile outFile(savePath);
+            if (outFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+                QTextStream stream(&outFile);
+                stream << doc.toString(2);
+                outFile.close();
+                QMessageBox::information(this, "Success", "Project generated successfully!");
+            }
         }
     }
-}
+
+    void MainWindow::on303PatternChanged(int index) {
+        if (!m_seqTable) return;
+
+        struct Step { int note; bool accent; bool slide; };
+        std::vector<Step> pattern;
+
+        if (index == 0) {
+            pattern = {
+                {36, false, false}, {36, true, false}, {48, true, true}, {48, false, false},
+                {39, false, false}, {39, true, false}, {36, true, false}, {36, true, false},
+                {48, false, false}, {48, false, true}, {51, true, false}, {36, false, false},
+                {36, true, false}, {36, true, true}, {43, true, false}, {36, false, false}
+            };
+        } else if (index == 1) {
+            pattern = {{36, true, false}, {48, false, true}, {48, true, false}, {39, false, false}, {41, true, false}};
+        } else if (index == 2) {
+            pattern = {
+                {36, false, false}, {36, false, true}, {48, true, false}, {36, false, false},
+                {39, false, false}, {39, true, true},  {51, true, false}, {36, false, false},
+                {43, true, false},  {36, false, false}, {36, true, false}, {48, false, false}
+            };
+        } else if (index == 3) {
+            pattern = {
+                {36, true, false},  {36, false, true},  {48, false, false}, {36, false, false},
+                {39, true, true},   {41, false, false}, {36, false, false}, {36, true, false},
+                {48, false, true},  {51, true, false},  {36, false, false}, {39, false, true},
+                {41, true, false},  {36, false, false}, {36, false, false}, {48, true, false}
+            };
+        } else if (index == 4) {
+            pattern = {
+                {36, true, false}, {48, false, true},  {48, true, false},
+                {39, false, false}, {36, false, true}, {41, true, false}, {36, false, false}
+            };
+        } else if (index == 5) {
+            pattern = {
+                {36, false, true}, {60, true, false}, {36, false, false}, {36, true, true},
+                {48, false, false}, {36, false, true}, {55, true, false}, {36, false, false},
+                {36, true, false}, {60, false, true}, {48, true, false}, {36, false, false},
+                {39, true, true},  {48, false, false}, {36, true, false}, {60, true, false}
+            };
+        } else if (index == 6) {
+            pattern = {
+                {36, true, false}, {36, false, true}, {48, false, false}, {39, true, false},
+                {36, false, false}, {41, true, true}, {53, false, false}, {36, true, false},
+                {36, false, true}, {48, true, false}, {39, false, false}, {36, false, false},
+                {41, true, false}, {43, false, true}, {55, true, false}, {36, false, false}
+            };
+        } else if (index == 7) {
+            pattern = {
+                {38, true, false}, {38, false, true}, {50, true, false}, {41, false, false},
+                {43, true, true},  {55, false, false}, {38, false, false}, {38, true, false},
+                {50, true, false}, {41, false, true}, {43, true, false}, {38, false, false},
+                {50, true, true},  {62, true, false}, {41, false, false}, {43, true, false}
+            };
+        } else if (index == 8) {
+            pattern = {
+                {40, false, false}, {40, true, false}, {52, false, true}, {52, false, false},
+                {50, true, false},  {47, false, false}, {43, true, false}, {40, false, false},
+                {40, true, false},  {52, false, false}, {50, true, true},  {52, false, false},
+                {47, false, false}, {43, true, false}, {45, false, true},  {47, true, false}
+            };
+        } else if (index == 9) {
+            pattern = {
+                {45, true, false}, {45, false, true}, {57, false, false}, {45, false, false},
+                {49, true, false}, {45, false, false}, {47, false, true}, {52, true, false},
+                {45, false, false}, {45, true, true}, {57, false, false}, {45, false, false},
+                {49, false, true}, {47, true, false}, {45, false, false}, {40, true, false}
+            };
+        } else if (index == 10) {
+            pattern = {
+                {36, true, false}, {36, false, false}, {36, true, true},  {39, false, false},
+                {41, true, false}, {36, false, false}, {43, false, true}, {43, true, false},
+                {36, false, false}, {36, true, false}, {36, false, true}, {39, true, false},
+                {41, false, false}, {43, true, true},  {46, false, false}, {43, true, false}
+            };
+        }
+
+        for (int col = 0; col < 16; ++col) {
+            if (col < pattern.size()) {
+                int midi = pattern[col].note;
+                int noteIdx = midi % 12;
+                int octave = (midi / 12) - 1;
+
+                QComboBox *stateCombo = qobject_cast<QComboBox*>(m_seqTable->cellWidget(0, col)); // NEW
+                QComboBox *noteCombo = qobject_cast<QComboBox*>(m_seqTable->cellWidget(1, col));
+                QSpinBox *octaveSpin = qobject_cast<QSpinBox*>(m_seqTable->cellWidget(2, col));
+                QCheckBox *slideCheck = qobject_cast<QCheckBox*>(m_seqTable->cellWidget(3, col));
+                QCheckBox *accentCheck = qobject_cast<QCheckBox*>(m_seqTable->cellWidget(4, col));
+
+                if(stateCombo) stateCombo->setCurrentIndex(0); // Default all loaded pattern notes to "Play"
+                if(noteCombo) noteCombo->setCurrentIndex(noteIdx);
+                if(octaveSpin) octaveSpin->setValue(octave);
+                if(slideCheck) slideCheck->setChecked(pattern[col].slide);
+                if(accentCheck) accentCheck->setChecked(pattern[col].accent);
+            }
+        }
+    }
+    void MainWindow::onFilterLengthChanged(int steps) {
+        m_freqTable->setColumnCount(steps);
+        m_resTable->setColumnCount(steps);
+
+        for (int col = 0; col < steps; ++col) {
+
+            if (!m_freqTable->cellWidget(0, col)) {
+                QSlider *fSlider = new QSlider(Qt::Horizontal);
+                fSlider->setRange(0, 100); fSlider->setValue(50);
+                m_freqTable->setCellWidget(0, col, fSlider);
+            }
+
+            if (!m_resTable->cellWidget(0, col)) {
+                QSlider *rSlider = new QSlider(Qt::Horizontal);
+                rSlider->setRange(0, 100); rSlider->setValue(80);
+                m_resTable->setCellWidget(0, col, rSlider);
+            }
+        }
+    }
+
+    void MainWindow::onFilterPatternChanged(int index) {
+        if (index == 0) return;
+        struct FreqRes { int f; int r; };
+        std::vector<FreqRes> vals;
+
+        if (index == 1) { // 3-Step Polymeter
+                    m_spinFilterLength->setValue(3);
+                    vals = {{80, 90}, {30, 40}, {50, 80}};
+                } else if (index == 2) { // 5-Step Tension
+                    m_spinFilterLength->setValue(5);
+                    vals = {{20, 100}, {30, 90}, {40, 80}, {60, 95}, {100, 100}};
+                } else if (index == 3) { // 7-Step Demented
+                    m_spinFilterLength->setValue(7);
+                    vals = {{90, 80}, {20, 30}, {30, 40}, {85, 95}, {10, 20}, {60, 60}, {95, 100}};
+                } else if (index == 4) { // 16-Step Sine
+                    m_spinFilterLength->setValue(16);
+                    for(int i=0; i<16; ++i) {
+                        int f = 50 + 40 * std::sin(i * M_PI / 8.0);
+                        vals.push_back({f, 85});
+                    }
+                } else if (index == 5) { // 24-Step Bubbler
+                    m_spinFilterLength->setValue(24);
+                    for(int i=0; i<24; ++i) {
+                        int r = (i % 3 == 0) ? 95 : 60;
+                        int f = 30 + (i * 2) % 60;
+                        vals.push_back({f, r});
+                    }
+                } else if (index == 6) { // 12-Step Rolling Reso
+                    m_spinFilterLength->setValue(12);
+                    vals = {{40, 90}, {60, 95}, {80, 80}, {30, 70}, {50, 85}, {70, 90},
+                            {40, 95}, {60, 80}, {80, 70}, {30, 85}, {50, 90}, {70, 95}};
+                } else if (index == 7) { // 32-Step Slow Sweep
+                    m_spinFilterLength->setValue(32);
+                    for(int i=0; i<32; ++i) {
+                        vals.push_back({10 + (int)(80.0 * i / 31.0), 85}); // Smooth sweep up
+                    }
+                } else if (index == 8) { // 9-Step Syncopated Chirp (Crazy polymeter)
+                    m_spinFilterLength->setValue(9);
+                    vals = {{95, 95}, {20, 40}, {20, 40}, {80, 90}, {20, 40}, {90, 95}, {20, 40}, {20, 40}, {70, 85}};
+                } else if (index == 9) { // 64-Step Evolving Acid
+                    m_spinFilterLength->setValue(64);
+                    for(int i=0; i<64; ++i) {
+                        int f = 40 + 30 * std::sin(i * M_PI / 16.0); // Slow sine cutoff
+                        int r = 70 + 25 * std::cos(i * M_PI / 8.0);  // Faster cosine resonance
+                        vals.push_back({f, r});
+                    }
+                }
+
+        for (int i=0; i < vals.size(); ++i) {
+            QSlider *fSlider = qobject_cast<QSlider*>(m_freqTable->cellWidget(0, i));
+            QSlider *rSlider = qobject_cast<QSlider*>(m_resTable->cellWidget(0, i));
+            if (fSlider) fSlider->setValue(vals[i].f);
+            if (rSlider) rSlider->setValue(vals[i].r);
+        }
+    }
