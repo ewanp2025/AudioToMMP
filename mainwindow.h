@@ -99,6 +99,9 @@ private slots:
     void onExportNewMmpClicked();
     void generate303Project();
     void on303PatternChanged(int index);
+    void onAnalyzerAddPattern();
+    void onAnalyzerClearPatterns();
+    void runPatternAnalysis();
 
 private:
     struct ExtractedNote {
@@ -120,6 +123,17 @@ private:
         QStringList targetObjectIds;
         QStringList resolvedTargets;
     };
+
+    struct LoadedPattern {
+        QString fileName;
+        int patternStartPos;
+        std::vector<int> uniqueKeys;
+        int rootNote;
+        int scaleType;
+        QString fullScaleName;
+    };
+
+    std::vector<LoadedPattern> m_analyzerPatterns;
 
     std::vector<ExistingAutomation> m_existingAutomations;
     std::vector<ExtractedNote> m_surgicalNotes;
@@ -286,6 +300,12 @@ private:
     void onFilterLengthChanged(int steps);
     QComboBox *m_comboFilterPattern;
     QSpinBox *m_spinFilterLength;
+
+    QWidget *m_tabAnalyzer;
+    QListWidget *m_listAnalyzerPatterns;
+    QTextEdit *m_txtAnalyzerFeedback;
+    QPushButton *m_btnAddPattern;
+    QPushButton *m_btnClearPatterns;
 
     struct ParsedTrack {
         QString trackName;

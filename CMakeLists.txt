@@ -21,6 +21,8 @@ set(PROJECT_SOURCES
         main.cpp
         mainwindow.cpp
         mainwindow.h
+        smartpatterneditor.cpp
+        smartpatterneditor.h
 
         libs/qcustomplot.cpp
         libs/qcustomplot.h

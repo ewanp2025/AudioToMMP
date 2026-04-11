@@ -9,6 +9,7 @@ extern "C" {
 #include <cmath>
 #include <QtConcurrent>
 #include <QInputDialog>
+#include "smartpatterneditor.h"
 
 
 void MainWindow::Biquad::setLPF(float fs, float f0, float Q) {
@@ -434,7 +435,7 @@ void MainWindow::setupUI()
 
     QWidget *editorControls = new QWidget();
     QVBoxLayout *controlLayout = new QVBoxLayout(editorControls);
-    controlLayout->addWidget(new QLabel("<h2>Mega Editor</h2>"));
+    controlLayout->addWidget(new QLabel("<h2>Editor</h2>"));
 
     QGridLayout *lfoLayout = new QGridLayout();
     m_comboTracks = new QComboBox();
@@ -485,8 +486,8 @@ void MainWindow::setupUI()
         "ADSR Envelope",
         "Random (Sample & Hold)",
         "Rhythmic Gate (16ths)",
-        "Sidechain Pump (Ducking)", // NEW
-        "Tape Stop / Drop"          // NEW
+        "Sidechain Pump (Ducking)",
+        "Tape Stop / Drop"
     });
 
     m_comboWaveform = new QComboBox();
@@ -739,7 +740,7 @@ void MainWindow::setupUI()
     grooveTopLayout->addWidget(btnLoadMidiGroove);
     grooveTopLayout->addWidget(btnLoadMmpGroove);
     grooveTopLayout->addWidget(m_spinStartPattern);
-    grooveTopLayout->addWidget(m_comboModChannel); // <--- Added here
+    grooveTopLayout->addWidget(m_comboModChannel);
     grooveTopLayout->addWidget(m_comboGridSize);
     grooveTopLayout->addStretch();
 
@@ -770,9 +771,9 @@ void MainWindow::setupUI()
     connect(m_spinStartPattern, &QSpinBox::valueChanged, this, &MainWindow::processModData);
     connect(m_comboModChannel, &QComboBox::currentIndexChanged, this, &MainWindow::processModData);
 
-
-
-    // Tab 6- 303 Test Tab Setup ---
+    // ========================================================
+    // Tab 6: 303 Test Tab Setup
+    // ========================================================
     m_tab303Test = new QWidget();
     QVBoxLayout *layout303 = new QVBoxLayout(m_tab303Test);
 
@@ -922,7 +923,57 @@ void MainWindow::setupUI()
 
     m_mainTabs->addTab(m_tab303Test, "303 Test");
 
+    // ========================================================
+    // TAB 7: PATTERN CLASH CHECKER
+    // ========================================================
+    m_tabAnalyzer = new QWidget();
+    QVBoxLayout *analyzerLayout = new QVBoxLayout(m_tabAnalyzer);
 
+    QHBoxLayout *analyzerTopLayout = new QHBoxLayout();
+    m_btnAddPattern = new QPushButton("+ Add .xpt Pattern to Checker");
+    m_btnAddPattern->setStyleSheet("background-color: #2E8B57; color: white; font-weight: bold; padding: 10px;");
+    m_btnClearPatterns = new QPushButton("Clear All");
+
+    analyzerTopLayout->addWidget(m_btnAddPattern);
+    analyzerTopLayout->addWidget(m_btnClearPatterns);
+    analyzerTopLayout->addStretch();
+    analyzerLayout->addLayout(analyzerTopLayout);
+
+    QSplitter *analyzerSplitter = new QSplitter(Qt::Horizontal);
+
+
+    QWidget *leftAnalyzerWidget = new QWidget();
+    QVBoxLayout *leftAnalyzerLayout = new QVBoxLayout(leftAnalyzerWidget);
+    leftAnalyzerLayout->addWidget(new QLabel("<b>Loaded Patterns:</b>"));
+    m_listAnalyzerPatterns = new QListWidget();
+    leftAnalyzerLayout->addWidget(m_listAnalyzerPatterns);
+    analyzerSplitter->addWidget(leftAnalyzerWidget);
+
+
+    QWidget *rightAnalyzerWidget = new QWidget();
+    QVBoxLayout *rightAnalyzerLayout = new QVBoxLayout(rightAnalyzerWidget);
+    rightAnalyzerLayout->addWidget(new QLabel("<b>Harmonic & Timing Analysis:</b>"));
+    m_txtAnalyzerFeedback = new QTextEdit();
+    m_txtAnalyzerFeedback->setReadOnly(true);
+    m_txtAnalyzerFeedback->setStyleSheet("background-color: #f8f9fa; color: #333; font-size: 14px;");
+    rightAnalyzerLayout->addWidget(m_txtAnalyzerFeedback);
+    analyzerSplitter->addWidget(rightAnalyzerWidget);
+
+    analyzerSplitter->setStretchFactor(0, 1);
+    analyzerSplitter->setStretchFactor(1, 2);
+    analyzerLayout->addWidget(analyzerSplitter);
+
+    m_mainTabs->addTab(m_tabAnalyzer, "7. Pattern Clash Checker");
+
+
+    connect(m_btnAddPattern, &QPushButton::clicked, this, &MainWindow::onAnalyzerAddPattern);
+    connect(m_btnClearPatterns, &QPushButton::clicked, this, &MainWindow::onAnalyzerClearPatterns);
+
+    // ========================================================
+    // TAB 8: SMART PATTERN EDITOR
+    // ========================================================
+    SmartPatternEditor *tabSmartEditor = new SmartPatternEditor(this);
+    m_mainTabs->addTab(tabSmartEditor, "8. Smart Pattern Editor");
 }
 
 void MainWindow::openFile()
@@ -2797,7 +2848,7 @@ void MainWindow::onCopyToEditorClicked()
     m_comboInterpolation->setCurrentIndex(ea.prog);
 
     updateEditorPlot();
-    QMessageBox::information(this, "Copied", "Pattern copied to the Mega Editor!");
+    QMessageBox::information(this, "Copied", "Pattern copied to the Editor!");
 }
 
 void MainWindow::onReverseEditorClicked()
@@ -3215,25 +3266,18 @@ void MainWindow::onLoadXptAsCvClicked() {
     if (!doc.setContent(&file)) { file.close(); return; }
     file.close();
 
-    QDomNodeList notes = doc.elementsByTagName("note");
-    if (notes.isEmpty()) {
-        QMessageBox::warning(this, "Empty", "No notes found in this .xpt file!");
-        return;
-    }
-
-
-    struct XptNote { double pos; double len; int key; };
+    struct XptNote { int key; double pos; double len; };
     std::vector<XptNote> parsedNotes;
 
+    QDomNodeList notes = doc.elementsByTagName("note");
     for (int i = 0; i < notes.count(); ++i) {
-        QDomElement noteElem = notes.at(i).toElement();
+        QDomElement nElem = notes.at(i).toElement();
         XptNote n;
-        n.pos = noteElem.attribute("pos").toDouble();
-        n.len = noteElem.attribute("len").toDouble();
-        n.key = noteElem.attribute("key").toInt();
+        n.key = nElem.attribute("key").toInt();
+        n.pos = nElem.attribute("pos").toDouble();
+        n.len = nElem.attribute("len").toDouble();
         parsedNotes.push_back(n);
     }
-
 
     std::sort(parsedNotes.begin(), parsedNotes.end(), [](const XptNote& a, const XptNote& b) {
         if (a.pos == b.pos) return a.key > b.key;
@@ -3249,15 +3293,12 @@ void MainWindow::onLoadXptAsCvClicked() {
     double maxPos = 0;
 
     for (const auto& n : parsedNotes) {
-
         if (n.pos < currentX) continue;
 
         double yVal = baseVal + ((n.key - 60) * scalePerSemi);
 
-
         m_editorX.append(n.pos);
         m_editorY.append(yVal);
-
 
         m_editorX.append(n.pos + n.len - 1.0);
         m_editorY.append(yVal);
@@ -3265,7 +3306,6 @@ void MainWindow::onLoadXptAsCvClicked() {
         currentX = n.pos + n.len;
         if (currentX > maxPos) maxPos = currentX;
     }
-
 
     m_comboInterpolation->setCurrentIndex(0);
 
@@ -3307,7 +3347,7 @@ void MainWindow::onExtractEnvelopeClicked()
 
 
     std::vector<double> rawEnvelopes;
-    double maxRms = 0.00001; // Prevent divide by zero
+    double maxRms = 0.00001;
 
     for (int i = 0; i < points; ++i) {
         int startSample = i * samplesPerPoint;
@@ -3364,11 +3404,11 @@ void MainWindow::onLoadModGrooveClicked()
         return;
     }
 
-    // Save the file to memory so the spinbox/dropdown can instantly re-read it
+
     m_currentModData = file.readAll();
     file.close();
 
-    processModData(); // Run the math
+    processModData();
 }
 
 void MainWindow::processModData()
@@ -3376,7 +3416,7 @@ void MainWindow::processModData()
     if (m_currentModData.isEmpty() || m_currentModData.size() < 1084) return;
 
     QString sig = QString::fromLatin1(m_currentModData.mid(1080, 4));
-    int channels = 4; // Default
+    int channels = 4;
     if (sig == "6CHN") channels = 6;
     else if (sig == "8CHN" || sig == "OCTA" || sig == "CD81") channels = 8;
 
@@ -3690,14 +3730,14 @@ void MainWindow::onLoadMidiGrooveClicked()
             absTick += readVLQ(pos);
             uint8_t status = data[pos];
 
-            if (status < 0x80) { status = lastStatus; } // Running status
+            if (status < 0x80) { status = lastStatus; }
             else { pos++; lastStatus = status; }
 
-            if (status == 0xFF) { // Meta Event
+            if (status == 0xFF) {
                 pos++; uint32_t len = readVLQ(pos); pos += len;
-            } else if (status == 0xF0 || status == 0xF7) { // SysEx
+            } else if (status == 0xF0 || status == 0xF7) {
                 uint32_t len = readVLQ(pos); pos += len;
-            } else { // Standard MIDI Event
+            } else {
                 uint8_t type = status & 0xF0;
                 uint8_t channel = status & 0x0F;
 
@@ -3706,7 +3746,7 @@ void MainWindow::onLoadMidiGrooveClicked()
                     uint8_t d1 = data[pos++];
                     uint8_t d2 = data[pos++];
 
-                    // 0x90 is Note On. Channel 9 is technically Channel 10 in zero-index MIDI.
+
                     if (type == 0x90 && channel == 9 && d2 > 0) {
                         allHits.append({absTick, d1, d2});
                     }
@@ -3717,10 +3757,10 @@ void MainWindow::onLoadMidiGrooveClicked()
 
 
     int targetBar = m_spinStartPattern->value();
-    if (targetBar < 1) targetBar = 1; // MIDI Bars start at 1
+    if (targetBar < 1) targetBar = 1;
 
-    double ticksPerStep = ppq / 4.0; // 1/16th note step length
-    int startTick = (targetBar - 1) * 4 * ppq; // 4 beats per bar
+    double ticksPerStep = ppq / 4.0;
+    int startTick = (targetBar - 1) * 4 * ppq;
 
     int numSteps = 64;
     if (m_comboGridSize->currentIndex() == 0) numSteps = 16;
@@ -3895,15 +3935,15 @@ void MainWindow::generate303Project() {
             };
 
 
-            if (stepState == 2) { // REST
+            if (stepState == 2) {
                 currentTick += ticksPerStep;
-                v_cap = v_cap * std::exp(-step_time / tau_d); // Let envelope decay
+                v_cap = v_cap * std::exp(-step_time / tau_d);
                 addAutoNode(0, currentC_base + (currentE_mod * 0.2), currentR);
                 addAutoNode(6, currentC_base, currentR);
                 continue;
             }
 
-            if (stepState == 1) { // TIE
+            if (stepState == 1) {
                 if (!lastNote.isNull()) {
                     int oldLen = lastNote.attribute("len").toInt();
                     lastNote.setAttribute("len", QString::number(oldLen + ticksPerStep));
@@ -4072,7 +4112,7 @@ void MainWindow::generate303Project() {
                 QCheckBox *slideCheck = qobject_cast<QCheckBox*>(m_seqTable->cellWidget(3, col));
                 QCheckBox *accentCheck = qobject_cast<QCheckBox*>(m_seqTable->cellWidget(4, col));
 
-                if(stateCombo) stateCombo->setCurrentIndex(0); // Default all loaded pattern notes to "Play"
+                if(stateCombo) stateCombo->setCurrentIndex(0);
                 if(noteCombo) noteCombo->setCurrentIndex(noteIdx);
                 if(octaveSpin) octaveSpin->setValue(octave);
                 if(slideCheck) slideCheck->setChecked(pattern[col].slide);
@@ -4134,12 +4174,12 @@ void MainWindow::generate303Project() {
                 } else if (index == 7) { // 32-Step Slow Sweep
                     m_spinFilterLength->setValue(32);
                     for(int i=0; i<32; ++i) {
-                        vals.push_back({10 + (int)(80.0 * i / 31.0), 85}); // Smooth sweep up
+                        vals.push_back({10 + (int)(80.0 * i / 31.0), 85});
                     }
-                } else if (index == 8) { // 9-Step Syncopated Chirp (Crazy polymeter)
+                } else if (index == 8) {
                     m_spinFilterLength->setValue(9);
                     vals = {{95, 95}, {20, 40}, {20, 40}, {80, 90}, {20, 40}, {90, 95}, {20, 40}, {20, 40}, {70, 85}};
-                } else if (index == 9) { // 64-Step Evolving Acid
+                } else if (index == 9) {
                     m_spinFilterLength->setValue(64);
                     for(int i=0; i<64; ++i) {
                         int f = 40 + 30 * std::sin(i * M_PI / 16.0); // Slow sine cutoff
@@ -4154,4 +4194,175 @@ void MainWindow::generate303Project() {
             if (fSlider) fSlider->setValue(vals[i].f);
             if (rSlider) rSlider->setValue(vals[i].r);
         }
+    }
+
+    void MainWindow::onAnalyzerAddPattern()
+    {
+        QStringList fileNames = QFileDialog::getOpenFileNames(this, "Select LMMS Patterns", "", "LMMS Pattern (*.xpt)");
+        if (fileNames.isEmpty()) return;
+
+        for (const QString& fileName : fileNames) {
+            QFile file(fileName);
+            if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) continue;
+
+            QDomDocument doc;
+            if (!doc.setContent(&file)) { file.close(); continue; }
+            file.close();
+
+            LoadedPattern lp;
+            lp.fileName = QFileInfo(fileName).fileName();
+
+
+            QDomElement patElem = doc.documentElement().firstChildElement("pattern");
+            lp.patternStartPos = patElem.attribute("pos", "0").toInt();
+
+
+            QDomNodeList notes = doc.elementsByTagName("note");
+            double chroma[12] = {0};
+
+            for (int i = 0; i < notes.count(); ++i) {
+                int key = notes.at(i).toElement().attribute("key").toInt();
+                lp.uniqueKeys.push_back(key);
+                if (key >= 0) {
+
+                    chroma[key % 12] += 1.0;
+                }
+            }
+
+
+            int majorTemplate[12] = {1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1};
+            int minorTemplate[12] = {1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0};
+
+            double bestScore = -1.0;
+            lp.rootNote = 0;
+            lp.scaleType = 0;
+
+            const QString noteNames[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+
+
+            for (int root = 0; root < 12; ++root) {
+                double majScore = 0;
+                double minScore = 0;
+
+                for (int i = 0; i < 12; ++i) {
+                    int templateIndex = (i - root + 12) % 12;
+                    majScore += chroma[i] * majorTemplate[templateIndex];
+                    minScore += chroma[i] * minorTemplate[templateIndex];
+                }
+
+
+                if (majScore > bestScore) {
+                    bestScore = majScore;
+                    lp.rootNote = root;
+                    lp.scaleType = 0; // Major
+                    lp.fullScaleName = noteNames[root] + " Major";
+                }
+                if (minScore > bestScore) {
+                    bestScore = minScore;
+                    lp.rootNote = root;
+                    lp.scaleType = 1; // Minor
+                    lp.fullScaleName = noteNames[root] + " Minor";
+                }
+            }
+
+            m_analyzerPatterns.push_back(lp);
+            m_listAnalyzerPatterns->addItem(lp.fileName + " (" + lp.fullScaleName + ")");
+        }
+
+        runPatternAnalysis();
+    }
+
+    void MainWindow::onAnalyzerClearPatterns()
+    {
+        m_analyzerPatterns.clear();
+        m_listAnalyzerPatterns->clear();
+        m_txtAnalyzerFeedback->clear();
+    }
+
+    void MainWindow::runPatternAnalysis()
+    {
+        if (m_analyzerPatterns.size() < 2) {
+            m_txtAnalyzerFeedback->setHtml("<i>Load at least 2 patterns to compare them...</i>");
+            return;
+        }
+
+        QString report = "<h2>Pattern Analysis Report</h2>";
+
+
+        report += "<h3>⏱️ Timeline Alignment</h3>";
+        bool allAligned = true;
+        int firstPos = m_analyzerPatterns[0].patternStartPos;
+
+        for (const auto& pat : m_analyzerPatterns) {
+            if (pat.patternStartPos != firstPos) {
+                allAligned = false;
+                break;
+            }
+        }
+
+        if (allAligned) {
+            report += "<p style='color: green;'><b>Perfect!</b> All patterns start at position " + QString::number(firstPos) + " and will play simultaneously.</p>";
+        } else {
+            report += "<p style='color: orange;'><b>Warning: Staggered Patterns</b><br/>These patterns are set to start at different times. If you want them to play together, you must align them in the LMMS Song Editor.</p><ul>";
+            for (const auto& pat : m_analyzerPatterns) {
+                report += "<li>" + pat.fileName + " starts at <b>pos " + QString::number(pat.patternStartPos) + "</b></li>";
+            }
+            report += "</ul>";
+        }
+
+
+            report += "<h3>🎵 Harmonic Clash Check</h3>";
+            bool perfectMatch = true;
+            QString baseScale = m_analyzerPatterns[0].fullScaleName;
+
+            for (const auto& pat : m_analyzerPatterns) {
+                if (pat.fullScaleName != baseScale) {
+                    perfectMatch = false;
+                    break;
+                }
+            }
+
+            if (perfectMatch) {
+                report += "<p style='color: green;'><b>Harmonic Harmony!</b> All patterns are detected as <b>" + baseScale + "</b>.</p>";
+            } else {
+                report += "<p style='color: red;'><b>Harmonic Clash Detected!</b></p><ul>";
+                for (const auto& pat : m_analyzerPatterns) {
+                    report += "<li>" + pat.fileName + " is in <b>" + pat.fullScaleName + "</b></li>";
+                }
+                report += "</ul>";
+
+
+                report += "<h4>💡 How to Fix It (Transposition Guide):</h4><ul>";
+                LoadedPattern masterPat = m_analyzerPatterns[0];
+
+                for (size_t i = 1; i < m_analyzerPatterns.size(); ++i) {
+                    LoadedPattern currentPat = m_analyzerPatterns[i];
+
+                    if (currentPat.rootNote != masterPat.rootNote || currentPat.scaleType != masterPat.scaleType) {
+
+
+                        int shift = masterPat.rootNote - currentPat.rootNote;
+                        if (shift > 6) shift -= 12;  // Shift down instead of way up
+                        if (shift < -5) shift += 12; // Shift up instead of way down
+
+                        QString dir = (shift >= 0) ? "UP" : "DOWN";
+
+                        report += "<li>To make <b>" + currentPat.fileName + "</b> match the root of <b>" + masterPat.fileName + "</b>:<br/>";
+
+                        if (shift == 0) {
+                            report += "Roots already match, no shift needed!";
+                        } else {
+                            report += "Highlight all notes in LMMS and shift <b>" + dir + " by " + QString::number(std::abs(shift)) + " semitones</b>.</li>";
+                        }
+
+
+                        if (masterPat.scaleType != currentPat.scaleType) {
+                            report += "<ul><li style='color: gray;'><i>Warning: One is Major and the other is Minor. Shifting the root will align them, but you may still have clashing 3rds. Consider rewriting the minor 3rds to major 3rds!</i></li></ul>";
+                        }
+                    }
+                }
+                report += "</ul>";
+            }
+
+            m_txtAnalyzerFeedback->setHtml(report);
     }
