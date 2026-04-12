@@ -137,7 +137,7 @@ void ScriptDialogWrapper::addInputCheckbox(std::string name, bool defaultVal) {
     layout->insertWidget(layout->count() - 1, cb);
     widgets[name] = cb;
 
-    QObject::connect(cb, &QCheckBox::checkStateChanged, [this]() { this->triggerPythonApply(); });
+    QObject::connect(cb, &QCheckBox::toggled, [this]() { this->triggerPythonApply(); });
 }
 
 void ScriptDialogWrapper::addInputText(std::string name, std::string defaultText) {
