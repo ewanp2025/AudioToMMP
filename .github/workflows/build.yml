@@ -21,7 +21,7 @@ jobs:
             qt_arch: clang_64
             output_name: HarmonicGridAnalyser-MacOS
           - os: ubuntu-22.04
-            qt_arch: linux_gcc_64
+            qt_arch: gcc_64
             output_name: HarmonicGridAnalyser-Linux
 
     steps:
@@ -31,7 +31,7 @@ jobs:
     - name: Install Qt6
       uses: jurplel/install-qt-action@v3
       with:
-        version: '6.7.2'
+        version: '6.6.1'
         host: ${{ runner.os == 'Windows' && 'windows' || runner.os == 'macOS' && 'mac' || 'linux' }}
         target: 'desktop'
         arch: ${{ matrix.qt_arch }}
@@ -55,8 +55,6 @@ jobs:
       shell: pwsh
       run: |
         windeployqt build/Release/HarmonicGridAnalyser.exe
-        $pythonDir = Split-Path (Get-Command python).Source
-        Copy-Item "$pythonDir\python3*.dll" -Destination "build/Release/"
 
     # --- MACOS DEPLOY (Fixed Name) ---
     - name: Deploy MacOS
