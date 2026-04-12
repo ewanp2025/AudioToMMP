@@ -1,82 +1,82 @@
 #include "smartpatterneditor.h"
-#include <pybind11/eval.h>
+//#include <pybind11/eval.h>
 
 ScoreManager* g_scoreManager = nullptr;
 SmartPatternEditor* g_currentEditor = nullptr;
 
-PYBIND11_EMBEDDED_MODULE(flpianoroll, m) {
-    py::class_<SmartNote>(m, "Note")
-    .def(py::init<>())
-        .def_readwrite("number", &SmartNote::number)
-        .def_readwrite("time", &SmartNote::time)
-        .def_readwrite("length", &SmartNote::length)
-        .def_readwrite("group", &SmartNote::group)
-        .def_readwrite("pan", &SmartNote::pan)
-        .def_readwrite("velocity", &SmartNote::velocity)
-        .def_readwrite("release", &SmartNote::release)
-        .def_readwrite("color", &SmartNote::color)
-        .def_readwrite("fcut", &SmartNote::fcut)
-        .def_readwrite("fres", &SmartNote::fres)
-        .def_readwrite("pitchofs", &SmartNote::pitchofs)
-        .def_readwrite("slide", &SmartNote::slide)
-        .def_readwrite("porta", &SmartNote::porta)
-        .def_readwrite("muted", &SmartNote::muted)
-        .def_readwrite("selected", &SmartNote::selected)
-        .def_readwrite("repeats", &SmartNote::repeats)
-        .def("clone", [](const SmartNote& self) {
-            SmartNote copy = self;
-            return copy;
-        });
+//PYBIND11_EMBEDDED_MODULE(flpianoroll, m) {
+//    py::class_<SmartNote>(m, "Note")
+//    .def(py::init<>())
+//        .def_readwrite("number", &SmartNote::number)
+//        .def_readwrite("time", &SmartNote::time)
+//        .def_readwrite("length", &SmartNote::length)
+//        .def_readwrite("group", &SmartNote::group)
+//        .def_readwrite("pan", &SmartNote::pan)
+//        .def_readwrite("velocity", &SmartNote::velocity)
+//        .def_readwrite("release", &SmartNote::release)
+//        .def_readwrite("color", &SmartNote::color)
+//        .def_readwrite("fcut", &SmartNote::fcut)
+//        .def_readwrite("fres", &SmartNote::fres)
+//        .def_readwrite("pitchofs", &SmartNote::pitchofs)
+//        .def_readwrite("slide", &SmartNote::slide)
+//        .def_readwrite("porta", &SmartNote::porta)
+//        .def_readwrite("muted", &SmartNote::muted)
+//        .def_readwrite("selected", &SmartNote::selected)
+//        .def_readwrite("repeats", &SmartNote::repeats)
+//        .def("clone", [](const SmartNote& self) {
+//            SmartNote copy = self;
+//            return copy;
+//        });
 
-    py::class_<SmartMarker>(m, "Marker")
-        .def(py::init<>())
-        .def_readwrite("time", &SmartMarker::time)
-        .def_readwrite("name", &SmartMarker::name)
-        .def_readwrite("mode", &SmartMarker::mode)
-        .def_readwrite("tsnum", &SmartMarker::tsnum)
-        .def_readwrite("tsden", &SmartMarker::tsden)
-        .def_readwrite("scale_root", &SmartMarker::scale_root)
-        .def_readwrite("scale_helper", &SmartMarker::scale_helper);
+//    py::class_<SmartMarker>(m, "Marker")
+//        .def(py::init<>())
+//        .def_readwrite("time", &SmartMarker::time)
+//        .def_readwrite("name", &SmartMarker::name)
+//        .def_readwrite("mode", &SmartMarker::mode)
+//        .def_readwrite("tsnum", &SmartMarker::tsnum)
+//        .def_readwrite("tsden", &SmartMarker::tsden)
+//        .def_readwrite("scale_root", &SmartMarker::scale_root)
+//        .def_readwrite("scale_helper", &SmartMarker::scale_helper);
 
-    py::class_<ScoreManager>(m, "Score")
-        .def_property_readonly("PPQ", &ScoreManager::getPPQ)
-        .def_property_readonly("noteCount", &ScoreManager::getNoteCount)
-        .def("getNote", &ScoreManager::getNote, py::return_value_policy::reference)
-        .def("addNote", &ScoreManager::addNote)
-        .def("deleteNote", &ScoreManager::deleteNote)
-        .def("clearNotes", &ScoreManager::clearNotes)
-        .def_property_readonly("markerCount", &ScoreManager::getMarkerCount)
-        .def("getMarker", &ScoreManager::getMarker, py::return_value_policy::reference)
-        .def("addMarker", &ScoreManager::addMarker)
-        .def("deleteMarker", &ScoreManager::deleteMarker)
-        .def("clearMarkers", &ScoreManager::clearMarkers)
-        .def("getTimelineSelection", &ScoreManager::getTimelineSelection)
-        .def_property_readonly("length", &ScoreManager::getLength);
+//    py::class_<ScoreManager>(m, "Score")
+//        .def_property_readonly("PPQ", &ScoreManager::getPPQ)
+//        .def_property_readonly("noteCount", &ScoreManager::getNoteCount)
+//        .def("getNote", &ScoreManager::getNote, py::return_value_policy::reference)
+//        .def("addNote", &ScoreManager::addNote)
+//        .def("deleteNote", &ScoreManager::deleteNote)
+//        .def("clearNotes", &ScoreManager::clearNotes)
+//        .def_property_readonly("markerCount", &ScoreManager::getMarkerCount)
+//        .def("getMarker", &ScoreManager::getMarker, py::return_value_policy::reference)
+//        .def("addMarker", &ScoreManager::addMarker)
+//        .def("deleteMarker", &ScoreManager::deleteMarker)
+//        .def("clearMarkers", &ScoreManager::clearMarkers)
+//        .def("getTimelineSelection", &ScoreManager::getTimelineSelection)
+//        .def_property_readonly("length", &ScoreManager::getLength);
 
-    py::class_<ScriptDialogWrapper>(m, "ScriptDialog")
-        .def(py::init<std::string>())
-        .def("addInput", &ScriptDialogWrapper::addInput)
-        .def("addInputKnobInt", &ScriptDialogWrapper::addInputKnobInt)
-        .def("addInputCombo", &ScriptDialogWrapper::addInputCombo)
-        .def("addInputCheckbox", &ScriptDialogWrapper::addInputCheckbox)
-        .def("addInputText", &ScriptDialogWrapper::addInputText)
-        .def("getInputValue", &ScriptDialogWrapper::getInputValue)
-        .def("AddInputSurface", &ScriptDialogWrapper::AddInputSurface);
-
-    auto utils = m.def_submodule("Utils");
-    utils.def("ShowMessage", [](std::string msg) {
-        QMessageBox::information(nullptr, "Script Message", QString::fromStdString(msg));
-    });
-    utils.def("log", [](std::string msg) {
-        if (g_currentEditor) g_currentEditor->appendLog(QString::fromStdString(msg));
-        qDebug() << "Python Script Log:" << QString::fromStdString(msg);
-    });
-    utils.def("ProgressMsg", [](std::string msg, int pos, int total) {
-        if (g_currentEditor) g_currentEditor->appendLog(QString("[%1/%2] %3").arg(pos).arg(total).arg(QString::fromStdString(msg)));
-    });
-
-    m.def("get_score", []() { return g_scoreManager; }, py::return_value_policy::reference);
-}
+//    py::class_<ScriptDialogWrapper>(m, "ScriptDialog")
+//        .def(py::init<std::string>())
+//        .def("addInput", &ScriptDialogWrapper::addInput)
+//        .def("addInputKnobInt", &ScriptDialogWrapper::addInputKnobInt)
+//        .def("addInputCombo", &ScriptDialogWrapper::addInputCombo)
+//        .def("addInputCheckbox", &ScriptDialogWrapper::addInputCheckbox)
+//        .def("addInputText", &ScriptDialogWrapper::addInputText)
+//        .def("getInputValue", &ScriptDialogWrapper::getInputValue)
+//        .def("AddInputSurface", &ScriptDialogWrapper::AddInputSurface);
+//
+//    auto utils = m.def_submodule("Utils");
+//    utils.def("ShowMessage", [](std::string msg) {
+//        QMessageBox::information(nullptr, "Script Message", QString::fromStdString(msg));
+//    });
+//    utils.def("log", [](std::string msg) {
+//        if (g_currentEditor) g_currentEditor->appendLog(QString::fromStdString(msg));
+//        qDebug() << "Python Script Log:" << QString::fromStdString(msg);
+//    });
+//    utils.def("ProgressMsg", [](std::string msg, int pos, int total) {
+//        if (g_currentEditor) g_currentEditor->appendLog(QString("[%1/%2] %3").arg(pos).arg(total).arg(QString::fromStdString(msg)));
+//    });
+//
+//    m.def("get_score", []() { return g_scoreManager; }, py::return_value_policy::reference);
+//}
 
 ScriptDialogWrapper::ScriptDialogWrapper(std::string title) {
     qtDialog = new QDialog();
@@ -150,33 +150,33 @@ void ScriptDialogWrapper::addInputText(std::string name, std::string defaultText
     QObject::connect(lineEdit, &QLineEdit::textChanged, [this]() { this->triggerPythonApply(); });
 }
 
-py::object ScriptDialogWrapper::getInputValue(std::string name) {
+//py::object ScriptDialogWrapper::getInputValue(std::string name) {
 
-    if (widgets.find(name) == widgets.end()) {
-        return py::cast(0.0);
-    }
+//    if (widgets.find(name) == widgets.end()) {
+//        return py::cast(0.0);
+//    }
 
-    QWidget* w = widgets[name];
-    if (auto* slider = qobject_cast<QSlider*>(w)) {
-        if (slider->maximum() == 1000 && slider->minimum() == 0) return py::cast(slider->value() / 1000.0);
-        return py::cast(slider->value());
-    }
-    if (auto* cb = qobject_cast<QCheckBox*>(w)) return py::cast(cb->isChecked());
-    if (auto* combo = qobject_cast<QComboBox*>(w)) return py::cast(combo->currentIndex());
-    if (auto* lineEdit = qobject_cast<QLineEdit*>(w)) return py::cast(lineEdit->text().toStdString());
-    return py::cast(0.0);
-}
+//    QWidget* w = widgets[name];
+//    if (auto* slider = qobject_cast<QSlider*>(w)) {
+//        if (slider->maximum() == 1000 && slider->minimum() == 0) return py::cast(slider->value() / 1000.0);
+//        return py::cast(slider->value());
+//    }
+//    if (auto* cb = qobject_cast<QCheckBox*>(w)) return py::cast(cb->isChecked());
+//    if (auto* combo = qobject_cast<QComboBox*>(w)) return py::cast(combo->currentIndex());
+//    if (auto* lineEdit = qobject_cast<QLineEdit*>(w)) return py::cast(lineEdit->text().toStdString());
+//    return py::cast(0.0);
+//}
 
 void ScriptDialogWrapper::triggerPythonApply() {
-    if (!pythonApply.is_none() && editor) {
-        editor->m_smartNotes = editor->m_backupNotes;
-        try {
-            pythonApply(pythonForm);
-            editor->updatePianoRoll();
-        } catch(py::error_already_set& e) {
+ //   if (!pythonApply.is_none() && editor) {
+//        editor->m_smartNotes = editor->m_backupNotes;
+//        try {
+//            pythonApply(pythonForm);
+//            editor->updatePianoRoll();
+//        } catch(py::error_already_set& e) {
 
-        }
-    }
+//        }
+//    }
 }
 
 
@@ -239,11 +239,11 @@ SmartPatternEditor::SmartPatternEditor(QWidget *parent) : QWidget(parent)
     m_scoreManager.editor = this;
     g_currentEditor = this;
 
-    static bool py_initialized = false;
-    if (!py_initialized) {
-        py::initialize_interpreter();
-        py_initialized = true;
-    }
+//    static bool py_initialized = false;
+//    if (!py_initialized) {
+//        py::initialize_interpreter();
+//        py_initialized = true;
+//    }
     setupUI();
 }
 
@@ -467,50 +467,50 @@ void SmartPatternEditor::onRunSelectedScript() {
     g_scoreManager = &m_scoreManager;
     m_backupNotes = m_smartNotes;
 
-    try {
-        py::module_ flp = py::module_::import("flpianoroll");
-        flp.attr("score") = flp.attr("get_score")();
+ //   try {
+//        py::module_ flp = py::module_::import("flpianoroll");
+//        flp.attr("score") = flp.attr("get_score")();
+//
+//        py::dict globals = py::globals();
+//        globals["score"] = flp.attr("score"); // Inject globally for scripts
 
-        py::dict globals = py::globals();
-        globals["score"] = flp.attr("score"); // Inject globally for scripts
+//        py::dict locals;
+//        py::eval_file(fileName.toStdString(), globals, locals);
 
-        py::dict locals;
-        py::eval_file(fileName.toStdString(), globals, locals);
+//        if (locals.contains("createDialog")) {
+//            py::function createDialog = locals["createDialog"];
+//            py::object formObj = createDialog();
 
-        if (locals.contains("createDialog")) {
-            py::function createDialog = locals["createDialog"];
-            py::object formObj = createDialog();
+//            ScriptDialogWrapper* form = formObj.cast<ScriptDialogWrapper*>();
+//            form->editor = this;
 
-            ScriptDialogWrapper* form = formObj.cast<ScriptDialogWrapper*>();
-            form->editor = this;
+//            if (locals.contains("apply")) {
+//                form->pythonApply = locals["apply"];
+//                form->pythonForm = formObj;
+//                form->triggerPythonApply();
+//            }
 
-            if (locals.contains("apply")) {
-                form->pythonApply = locals["apply"];
-                form->pythonForm = formObj;
-                form->triggerPythonApply();
-            }
-
-            if (form->qtDialog->exec() == QDialog::Accepted) {
-                updatePianoRoll();
-                appendLog("Script applied successfully.");
-            } else {
-                m_smartNotes = m_backupNotes;
-                updatePianoRoll();
-                appendLog("Script canceled.");
-            }
-        } else {
-            if (locals.contains("apply")) {
-                py::function apply = locals["apply"];
-                apply(py::none());
-                updatePianoRoll();
-                appendLog("Script applied (No UI).");
-            }
-        }
-    } catch (py::error_already_set& e) {
-        appendLog(QString("<span style='color:red;'>Python Error: %1</span>").arg(e.what()));
-        m_smartNotes = m_backupNotes;
-        updatePianoRoll();
-    }
+//            if (form->qtDialog->exec() == QDialog::Accepted) {
+//                updatePianoRoll();
+//                appendLog("Script applied successfully.");
+//            } else {
+//                m_smartNotes = m_backupNotes;
+//                updatePianoRoll();
+//                appendLog("Script canceled.");
+//            }
+//        } else {
+//            if (locals.contains("apply")) {
+//                py::function apply = locals["apply"];
+//                apply(py::none());
+//                updatePianoRoll();
+//                appendLog("Script applied (No UI).");
+//            }
+//        }
+//    } catch (py::error_already_set& e) {
+//       appendLog(QString("<span style='color:red;'>Python Error: %1</span>").arg(e.what()));
+//        m_smartNotes = m_backupNotes;
+//        updatePianoRoll();
+//    }
 }
 
 void SmartPatternEditor::onGridSettingsChanged() {

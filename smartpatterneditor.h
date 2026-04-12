@@ -1,12 +1,12 @@
 #ifndef SMARTPATTERNEDITOR_H
 #define SMARTPATTERNEDITOR_H
 
-#pragma push_macro("slots")
-#undef slots
-#include <pybind11/pybind11.h>
-#include <pybind11/embed.h>
-#include <pybind11/stl.h>
-#pragma pop_macro("slots")
+//#pragma push_macro("slots")
+//#undef slots
+//#include <pybind11/pybind11.h>
+//#include <pybind11/embed.h>
+//#include <pybind11/stl.h>
+//#pragma pop_macro("slots")
 
 #include <QWidget>
 #include <QVBoxLayout>
@@ -42,7 +42,7 @@
 #include <map>
 #include <string>
 
-namespace py = pybind11;
+//namespace py = pybind11;
 
 struct SmartNote {
     int id;
@@ -104,8 +104,8 @@ public:
     std::map<std::string, QWidget*> widgets;
     SmartPatternEditor* editor = nullptr;
 
-    py::object pythonForm;
-    py::function pythonApply;
+//    py::object pythonForm;
+//    py::function pythonApply;
 
     ScriptDialogWrapper(std::string title);
     ~ScriptDialogWrapper() { delete qtDialog; }
@@ -116,7 +116,7 @@ public:
     void addInputCheckbox(std::string name, bool defaultVal);
     void addInputText(std::string name, std::string defaultText);
 
-    py::object getInputValue(std::string name);
+//    py::object getInputValue(std::string name);
     void triggerPythonApply();
     void AddInputSurface(std::string name);
 };
