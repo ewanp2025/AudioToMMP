@@ -46,8 +46,4 @@ This project relies on the following open-source libraries:
 * **License:** Public Domain (Unlicense) / MIT-0
 * **Source:** https://github.com/mackron/miniaudio
 
-#### pybind
-* **Description:** A header only library that exposes C++ types in Python and vice versa. It is used here for the current work in progress development to embed a Python interpreter,allowing for custom Python scripts to programmatically manipulate note parameters (like velocity and panning) and generate patterns directly within the Smart Pattern Editor.
-* **Author:** Wenzel Jakob and contributors
-* **License:** BSD-3-Clause
-* **Source:** https://github.com/pybind/pybind11
+
