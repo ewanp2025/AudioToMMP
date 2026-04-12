@@ -13,9 +13,12 @@ if(MINGW)
     add_compile_options(-Wa,-mbig-obj)
 endif()
 
-
+# 1. Find Qt
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets PrintSupport Multimedia Concurrent Xml)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets PrintSupport Multimedia Concurrent Xml)
+
+# 2. Find Python (Interpreter and C++ Development Headers)
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
 
 set(PROJECT_SOURCES
         main.cpp
@@ -26,6 +29,7 @@ set(PROJECT_SOURCES
 
         libs/qcustomplot.cpp
         libs/qcustomplot.h
+
         libs/kiss_fft.c
         libs/kiss_fft.h
         libs/_kiss_fft_guts.h
@@ -37,13 +41,11 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
     )
-
 else()
     if(ANDROID)
         add_library(HarmonicGridAnalyser SHARED
             ${PROJECT_SOURCES}
         )
-
     else()
         add_executable(HarmonicGridAnalyser
             ${PROJECT_SOURCES}
@@ -51,6 +53,7 @@ else()
     endif()
 endif()
 
+# 3. Link Python to your executable
 target_link_libraries(HarmonicGridAnalyser PRIVATE
     Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::Gui
@@ -59,13 +62,16 @@ target_link_libraries(HarmonicGridAnalyser PRIVATE
     Qt${QT_VERSION_MAJOR}::Multimedia
     Qt${QT_VERSION_MAJOR}::Concurrent
     Qt${QT_VERSION_MAJOR}::Xml
+    Python3::Python
 )
 
-target_include_directories(HarmonicGridAnalyser PRIVATE 
+# 4. Include Python and Pybind directories
+target_include_directories(HarmonicGridAnalyser PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/libs
+    ${CMAKE_CURRENT_SOURCE_DIR}/libs/pybind   # Assuming your pybind headers are directly in here
+    ${Python3_INCLUDE_DIRS}                   # Injects the path to Python.h
 )
-
 
 if(${QT_VERSION} VERSION_LESS 6.1.0)
   set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.example.HarmonicGridAnalyser)
