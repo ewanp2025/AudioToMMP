@@ -50,17 +50,13 @@ jobs:
       run: cmake --build build --config Release
 
     # --- WINDOWS DEPLOY (Fixed Name) ---
-- name: Deploy Windows
+    - name: Deploy Windows
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
         windeployqt build/Release/HarmonicGridAnalyser.exe
-     
         $pythonDir = Split-Path (Get-Command python).Source
-     
         Copy-Item "$pythonDir\python3*.dll" -Destination "build/Release/"
-
-
 
     # --- MACOS DEPLOY (Fixed Name) ---
     - name: Deploy MacOS
