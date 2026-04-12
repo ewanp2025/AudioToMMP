@@ -34,6 +34,11 @@ set(PROJECT_SOURCES
         libs/kiss_fft.h
         libs/_kiss_fft_guts.h
         libs/kiss_fft_log.h
+        libs/pybind11/stl.h
+        libs/pybind11/pybind11.h
+        libs/pybind11/embed.h
+
+
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
