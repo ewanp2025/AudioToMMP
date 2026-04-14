@@ -23,6 +23,8 @@ set(PROJECT_SOURCES
         mainwindow.h
         smartpatterneditor.cpp
         smartpatterneditor.h
+	housebeatgenerator.cpp
+        housebeatgenerator.h
 
         libs/qcustomplot.cpp
         libs/qcustomplot.h

@@ -25,6 +25,8 @@
 #include <QTextEdit>
 #include <QScrollArea>
 
+class HouseBeatGenerator;
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -321,6 +323,7 @@ private:
         void setHPF(float fs, float f0, float Q);
         float process(float in);
     };
+    HouseBeatGenerator *m_houseBeatGenerator;
 };
 
 

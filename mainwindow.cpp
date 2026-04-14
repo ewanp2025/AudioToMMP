@@ -10,6 +10,7 @@ extern "C" {
 #include <QtConcurrent>
 #include <QInputDialog>
 #include "smartpatterneditor.h"
+#include "housebeatgenerator.h"
 
 
 void MainWindow::Biquad::setLPF(float fs, float f0, float Q) {
@@ -974,6 +975,12 @@ void MainWindow::setupUI()
     // ========================================================
     SmartPatternEditor *tabSmartEditor = new SmartPatternEditor(this);
     m_mainTabs->addTab(tabSmartEditor, "8. Smart Pattern Editor");
+
+    // ========================================================
+    // TAB 9: House Beat Generator
+    // ========================================================
+    m_houseBeatGenerator = new HouseBeatGenerator(this);
+    m_mainTabs->addTab(m_houseBeatGenerator, "House Beat Generator");
 }
 
 void MainWindow::openFile()
