@@ -70,6 +70,7 @@ private slots:
     void onRandomSnarePattern();
     void onRandomRimshotPattern();
     void onDuplicate16Clicked();
+    void onDevLoadClicked();
 
 private:
     void setupUI();
@@ -77,8 +78,9 @@ private:
     void applyPreset(int presetIndex);
     void updateCell(int row, int col);
     void buildMMP(const QString &filePath);
+    QPushButton *m_btnDevLoad;
 
-    // Core UI
+
     QTableWidget *m_grid;
     QComboBox *m_presetCombo;
     QSpinBox *m_bpmSpin;

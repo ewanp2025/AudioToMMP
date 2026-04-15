@@ -8,7 +8,7 @@
 #include <QApplication>
 #include <QPainterPath>
 #include <cmath>
-#include <algorithm> // NEW: Required for std::sort
+#include <algorithm>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -84,10 +84,10 @@ HouseBeatGenerator::HouseBeatGenerator(QWidget *parent) : QWidget(parent)
 {
     m_drums = {
         {"Kick", "((t<0.006)*sinew(2*pi*6800*t)*exp(-t*1250) + sinew(integrate(f*(52/440)*(1+A2*0.85*exp(-t*58)))) * exp(-t*(3.1+A1*13)) * (0.88 + 0.12*(v>0.65)))", "A1=0.28 A2=0.65 A3=0.18", 200, 0, false, false},
-        {"Snare", "(  randsv(t * srate, 0) * exp(-t * (A1 * 60 + 10)) * (t < 0.04) + sinew(integrate(200)) * exp(-t * (A1 * 40 + 10)))", "A1=0.65 A2=0.45 A3=0.55", 180, 0, true, true},
-        {"Clap", "(t<0.003)*sinew(2*pi*3100*t)*exp(-t*2800) + randsv(t*srate*1.8,0)*exp(-t*32)*(t<0.055) + randsv(t*srate*0.9,0)*exp(-t*26)*(t<0.11)", "A1=0.72 A2=0.38 A3=0.65", 155, 12, true, true},
+        {"Snare", "(  randsv(t * srate, 0) * exp(-t * (A1 * 60 + 10)) * (t < 0.04) + sinew(integrate(200)) * exp(-t * (A1 * 40 + 10)))", "A1=0.65 A2=0.45 A3=0.55", 180, 0, false, true},
+        {"Clap", "(t<0.003)*sinew(2*pi*3100*t)*exp(-t*2800) + randsv(t*srate*1.8,0)*exp(-t*32)*(t<0.055) + randsv(t*srate*0.9,0)*exp(-t*26)*(t<0.11)", "A1=0.72 A2=0.38 A3=0.65", 155, 12, false, true},
         {"ClosedHat", "randsv(t*srate*(2+A2*3),0)*exp(-t*(18+A1*28))*(t<0.042)", "A1=0.35 A2=0.55 A3=0.75", 105, -18, true, false},
-        {"OpenHat", "randsv(t*srate*(1.6+A2*2.2),0)*exp(-t*(9+A1*14))*(t<0.135)", "A1=0.82 A2=0.45 A3=0.65", 92, 18, true, false},
+        {"OpenHat", "randsv(t*srate*(1.6+A2*2.2),0)*exp(-t*(9+A1*14))*(t<0.135)", "A1=0.82 A2=0.45 A3=0.65", 92, 18, false, false},
         {"RimShot", "(t<0.007)*sinew(2*pi*2800*t)*exp(-t*1350) + sinew(integrate(380*(1+A2*0.45*exp(-t*38))))*exp(-t*(A1*13+4))*0.65", "A1=0.45 A2=0.72 A3=0.28", 125, -8, false, true},
         {"LowTom", "sinew(integrate(f*(92/440)*(1+A2*1.1*exp(-t*28))))*exp(-t*(5+A1*16))", "A1=0.55 A2=0.75 A3=0.22", 140, 10, false, false},
         {"MidTom", "sinew(integrate(f*(138/440)*(1+A2*0.95*exp(-t*32))))*exp(-t*(4.8+A1*14))", "A1=0.48 A2=0.82 A3=0.25", 135, 5, false, false},
@@ -113,7 +113,18 @@ void HouseBeatGenerator::setupUI()
 
     QHBoxLayout *topRow1 = new QHBoxLayout();
     m_presetCombo = new QComboBox();
-    m_presetCombo->addItems({"Pattern A", "Pattern B", "Pattern C", "Pattern D", "Pattern E", "Pattern F", "Pattern G", "Pattern H", "Pattern I", "Pattern J", "Pattern K", "Pattern L", "Pattern M"});
+
+
+    m_presetCombo = new QComboBox();
+
+
+    for (int i = 1; i <= 30; ++i) {
+        m_presetCombo->addItem(QString("Pattern %1").arg(i));
+    }
+
+
+
+
     connect(m_presetCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &HouseBeatGenerator::onPresetChanged);
 
     m_bpmSpin = new QSpinBox(); m_bpmSpin->setRange(100,140); m_bpmSpin->setValue(123); m_bpmSpin->setSuffix(" BPM");
@@ -150,7 +161,7 @@ void HouseBeatGenerator::setupUI()
     m_grid->verticalHeader()->setDefaultSectionSize(20);
     m_grid->horizontalHeader()->setDefaultSectionSize(20);
 
-    for (int r = 0; r < 12; ++r) {
+    for (int r = 0; r < m_drums.size(); ++r) {
         QTableWidgetItem *swingItem = new QTableWidgetItem();
         swingItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
         swingItem->setCheckState(m_drums[r].swingEnabledByDefault ? Qt::Checked : Qt::Unchecked);
@@ -262,9 +273,17 @@ void HouseBeatGenerator::setupUI()
     m_btnDevDump->setVisible(ENABLE_DEV_MODE);
     connect(m_btnDevDump, &QPushButton::clicked, this, &HouseBeatGenerator::onDevDumpClicked);
 
+
+    m_btnDevLoad = new QPushButton("DEV: Load Pattern");
+    m_btnDevLoad->setStyleSheet("background-color:#005500; color:white; font-weight:bold; padding:12px;"); // Dark green to distinguish it
+    m_btnDevLoad->setVisible(ENABLE_DEV_MODE);
+    connect(m_btnDevLoad, &QPushButton::clicked, this, &HouseBeatGenerator::onDevLoadClicked);
+
     bottomRow->addWidget(m_closedHatVelCombo); bottomRow->addWidget(m_openHatVelCombo); bottomRow->addWidget(new QLabel("Vel Depth:")); bottomRow->addWidget(m_velDepthSpin);
     bottomRow->addWidget(m_hatFxModeCombo); bottomRow->addWidget(m_filterTypeCombo); bottomRow->addWidget(m_filterModCombo); bottomRow->addWidget(m_lfoBarsSpin);
     bottomRow->addStretch();
+
+    bottomRow->addWidget(m_btnDevLoad);
     bottomRow->addWidget(m_btnDevDump);
     bottomRow->addWidget(m_btnExport);
     mainLayout->addLayout(bottomRow);
@@ -312,7 +331,7 @@ void HouseBeatGenerator::updateCell(int row, int col) {
 }
 
 void HouseBeatGenerator::createPresets() {
-    m_presets.resize(14);
+    m_presets.resize(30, std::vector<std::vector<float>>(m_drums.size(), std::vector<float>(64, 0.0f)));
 
 
     auto setNotes = [&](int pIdx, int dIdx, std::initializer_list<int> notes, float vol = 1.0f) {
@@ -427,25 +446,198 @@ void HouseBeatGenerator::createPresets() {
     for(int i=1; i<64; i+=2) m_presets[9][3][i] = 1.0f;
     for(int b=0; b<64; b+=16) setNotes(9, 4, {b+2, b+6, b+10, b+13});
 
+      m_presets[10] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
+    setNotes(10, 0, {0, 4, 8, 12});
+    setNotes(10, 1, {4, 12});
+    setNotes(10, 1, {7, 10, 15}, 0.65f);
+    setNotes(10, 2, {4, 12}, 0.8f);
+    setNotes(10, 3, {0, 1, 3, 4, 5, 7, 8, 9, 11, 12, 13, 15}, 0.7f);
+    setNotes(10, 4, {2, 6, 10, 14});
+    setNotes(10, 6, {11, 14});
+    setNotes(10, 7, {8});
+    fill64(10);
 
-    for (int i = 10; i < 14; ++i) {
-        m_presets[i] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
-        for (int s = 0; s < 16; ++s) {
-            m_presets[i][0][s*4] = 1.0f;
-            m_presets[i][1][s*4 + 2] = 1.0f;
-            m_presets[i][3][s*4] = 1.0f;
-        }
+    m_presets[11] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
+    setNotes(11, 0, {0, 4, 8, 12});
+    setNotes(11, 2, {4, 12});
+    setNotes(11, 5, {3, 8, 11}, 0.85f);
+    setNotes(11, 3, {2, 6, 10, 14}, 0.6f);
+    setNotes(11, 4, {2, 6, 10, 14}, 0.9f);
+    setNotes(11, 9, {0, 3, 6, 9, 12, 15}, 0.65f);
+    fill64(11);
+    setNotes(11, 0, {60, 63});
+    setNotes(11, 5, {58, 61, 62});
+
+    m_presets[12] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
+    setNotes(12, 0, {0, 4, 8, 12, 15});
+    setNotes(12, 1, {4, 12});
+    setNotes(12, 3, {1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15}, 0.65f);
+    setNotes(12, 4, {2, 6, 10, 14}, 0.85f);
+    setNotes(12, 10, {7, 15}, 0.75f);
+    fill64(12);
+
+    m_presets[13] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
+    for (int s = 0; s < 16; ++s) {
+        m_presets[13][0][s*4] = 1.0f;
+        m_presets[13][1][s*4 + 2] = 1.0f;
+        m_presets[13][3][s*4] = 1.0f;
     }
+
+
+    m_presets[14] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
+    for (int bar = 0; bar < 4; ++bar) {
+        int b = bar * 16;
+        setNotes(14, 0, {b+0, b+4, b+8, b+12});
+        setNotes(14, 1, {b+4, b+12});
+        setNotes(14, 2, {b+12}, 0.82f);
+
+
+        for (int i = 0; i < 16; ++i) m_presets[14][3][b+i] = 0.88f;
+
+
+        if (bar % 2 == 1) m_presets[14][4][b+14] = 0.92f;
+
+
+        setNotes(14, 11, {b+2, b+6, b+10, b+14}, 0.78f);
+
+
+        for (int i = 1; i < 16; i += 2) m_presets[14][9][b+i] = 0.62f;
+    }
+
+
+    m_presets[15] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
+    for (int bar = 0; bar < 4; ++bar) {
+        int b = bar * 16;
+        setNotes(15, 0, {b+0, b+4, b+8, b+12});
+        setNotes(15, 1, {b+4, b+12});
+        setNotes(15, 2, {b+4, b+12}, 0.75f);
+
+
+        for (int i = 0; i < 16; ++i) {
+            m_presets[15][3][b+i] = (i % 4 == 0 || i % 4 == 2) ? 0.92f : 0.68f;
+        }
+
+
+        m_presets[15][4][b+14] = 0.88f;
+
+
+        setNotes(15, 5, {b+2, b+10}, 0.72f);
+
+
+        setNotes(15, 11, {b+1, b+5, b+9, b+13}, 0.82f);
+        setNotes(15, 11, {b+3, b+7, b+11}, 0.58f);
+        for (int i = 1; i < 16; i += 2) m_presets[15][9][b+i] = 0.65f;
+    }
+
+
+    m_presets[16] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
+    for (int bar = 0; bar < 4; ++bar) {
+        int b = bar * 16;
+        setNotes(16, 0, {b+0, b+4, b+8, b+12});
+        setNotes(16, 1, {b+12});
+        setNotes(16, 2, {b+4}, 0.85f);
+
+
+        for (int i = 2; i < 16; i += 2) m_presets[16][3][b+i] = 0.85f;
+
+
+        if (bar == 3) m_presets[16][4][b+14] = 0.95f;
+
+
+        setNotes(16, 10, {b+6, b+14}, 0.55f);
+        setNotes(16, 11, {b+3, b+11}, 0.78f);
+    }
+
+
+    m_presets[17] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
+    for (int bar = 0; bar < 4; ++bar) {
+        int b = bar * 16;
+
+
+        setNotes(17, 0, {b+0, b+4, b+8, b+12}, 0.86f);
+
+
+        setNotes(17, 1, {b+4, b+12}, 0.90f);
+
+
+        m_presets[17][3][b+0]  = 0.55f; // Vel 70
+        m_presets[17][3][b+2]  = 0.78f; // Vel 100
+        m_presets[17][3][b+4]  = 0.55f; // Vel 70
+        m_presets[17][3][b+6]  = 0.82f; // Vel 105
+        m_presets[17][3][b+8]  = 0.59f; // Vel 75
+        m_presets[17][3][b+10] = 0.78f; // Vel 100
+        m_presets[17][3][b+12] = 0.55f; // Vel 70
+        m_presets[17][3][b+14] = 0.86f; // Vel 110
+
+
+        m_presets[17][1][b+1]  = 0.20f;
+        m_presets[17][5][b+3]  = 0.23f;
+        m_presets[17][1][b+5]  = 0.31f;
+        m_presets[17][4][b+7]  = 0.27f;
+        m_presets[17][1][b+9]  = 0.15f;
+        m_presets[17][6][b+15] = 0.31f;
+    }
+
+     m_presets[18] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
+
+
+    for (int bar = 0; bar < 3; ++bar) {
+        int b = bar * 16;
+        setNotes(18, 0, {b+0, b+4, b+8, b+12}, 0.86f);
+        setNotes(18, 1, {b+4, b+12}, 0.90f);
+        setNotes(18, 4, {b+2, b+6, b+10, b+14}, 0.80f);
+        for(int i = 0; i < 16; ++i) if(i % 4 != 2) m_presets[18][3][b+i] = 0.60f;
+    }
+
+
+    int b4 = 48;
+
+
+    m_presets[18][0][b4+0] = 0.86f;
+    m_presets[18][4][b4+2] = 0.80f;
+
+
+    m_presets[18][0][b4+4] = 0.86f;
+    m_presets[18][1][b4+4] = 0.90f;
+    m_presets[18][4][b4+6] = 0.80f;
+
+
+    m_presets[18][0][b4+8] = 0.86f;
+    m_presets[18][8][b4+8] = 0.70f;
+    m_presets[18][4][b4+10] = 0.80f;
+    m_presets[18][7][b4+10] = 0.75f;
+    m_presets[18][1][b4+11] = 0.86f;
+
+
+    m_presets[18][6][b4+13] = 0.80f;
+    m_presets[18][4][b4+14] = 0.80f;
+    m_presets[18][2][b4+14] = 0.95f;
+    m_presets[18][3][b4+15] = 0.31f;
+
+
 }
 
 void HouseBeatGenerator::applyPreset(int index) {
     if (index < 0 || index >= m_presets.size()) return;
     m_velocities = m_presets[index];
-    for (int r = 0; r < 12; ++r) for (int c = 0; c < 64; ++c) updateCell(r, c);
+
+    for (int r = 0; r < m_drums.size(); ++r) {
+        for (int c = 0; c < 64; ++c) {
+            updateCell(r, c);
+        }
+    }
 }
 
 void HouseBeatGenerator::onPresetChanged(int index) { applyPreset(index); }
-void HouseBeatGenerator::onSwingGlobalChanged() { for (int r = 0; r < 12; ++r) for (int c = 0; c < 64; ++c) updateCell(r, c); }
+
+void HouseBeatGenerator::onSwingGlobalChanged() {
+
+    for (int r = 0; r < m_drums.size(); ++r) {
+        for (int c = 0; c < 64; ++c) {
+            updateCell(r, c);
+        }
+    }
+}
 
 void HouseBeatGenerator::onExportMMPClicked()
 {
@@ -555,9 +747,9 @@ void HouseBeatGenerator::buildMMP(const QString &filePath)
         QTableWidgetItem* swingBox = m_grid->item(d, 64);
         bool appliesSwing = swingBox && (swingBox->checkState() == Qt::Checked);
 
-        int shuffleSetting = m_shuffleDial->value();           // 1 to 7
+        int shuffleSetting = m_shuffleDial->value();
         bool globalSwingActive = (shuffleSetting > 1);
-        double swingFactor = (shuffleSetting - 1.0) / 6.0;     // 0.0 → 1.0
+        double swingFactor = (shuffleSetting - 1.0) / 6.0;
 
         bool usePianoRoll = (globalSwingActive && appliesSwing);
 
@@ -781,4 +973,84 @@ void HouseBeatGenerator::onDuplicate16Clicked() {
             updateCell(r, c);
         }
     }
+}
+
+void HouseBeatGenerator::onDevLoadClicked()
+{
+    QString path = QFileDialog::getOpenFileName(this, "Load LMMS Project", "", "LMMS Project (*.mmp)");
+    if (path.isEmpty()) return;
+
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, "Error", "Could not open .mmp file.");
+        return;
+    }
+
+    QDomDocument doc;
+    if (!doc.setContent(&file)) {
+        QMessageBox::warning(this, "Error", "Could not parse XML structure. Is this a valid .mmp file?");
+        file.close();
+        return;
+    }
+    file.close();
+
+
+    for (int r = 0; r < m_drums.size(); ++r) {
+        for (int c = 0; c < 64; ++c) {
+            m_velocities[r][c] = 0.0f;
+            updateCell(r, c);
+        }
+    }
+
+
+    QDomNodeList tracks = doc.elementsByTagName("track");
+    for (int i = 0; i < tracks.count(); ++i) {
+        QDomElement trackElem = tracks.at(i).toElement();
+        QString trackName = trackElem.attribute("name");
+
+
+        int drumIdx = -1;
+        for (int d = 0; d < m_drums.size(); ++d) {
+            if (m_drums[d].name == trackName) {
+                drumIdx = d;
+                break;
+            }
+        }
+
+
+        if (drumIdx == -1) continue;
+
+
+        QDomNodeList notes = trackElem.elementsByTagName("note");
+        for (int j = 0; j < notes.count(); ++j) {
+            QDomElement noteElem = notes.at(j).toElement();
+            int pos = noteElem.attribute("pos").toInt();
+            int vol = noteElem.attribute("vol").toInt();
+            int len = noteElem.attribute("len").toInt();
+
+
+            int step = qRound(pos / 12.0f) % 64;
+
+            if (step >= 0 && step < 64) {
+                float mappedVelocity = 1.0f;
+
+
+                if (vol <= 85) mappedVelocity = 0.72f;
+
+
+                if (len > 0 && len < 12) mappedVelocity = 2.0f;
+
+                m_velocities[drumIdx][step] = mappedVelocity;
+                updateCell(drumIdx, step);
+            }
+        }
+    }
+
+
+    int currentIndex = m_presetCombo->currentIndex();
+    if (currentIndex >= 0 && currentIndex < m_presets.size()) {
+        m_presets[currentIndex] = m_velocities;
+    }
+
+    QMessageBox::information(this, "Success", "MMP pattern loaded and snapped to grid!");
 }
