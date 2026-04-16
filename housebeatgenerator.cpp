@@ -122,9 +122,6 @@ void HouseBeatGenerator::setupUI()
         m_presetCombo->addItem(QString("Pattern %1").arg(i));
     }
 
-
-
-
     connect(m_presetCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &HouseBeatGenerator::onPresetChanged);
 
     m_bpmSpin = new QSpinBox(); m_bpmSpin->setRange(100,140); m_bpmSpin->setValue(123); m_bpmSpin->setSuffix(" BPM");
@@ -132,12 +129,16 @@ void HouseBeatGenerator::setupUI()
     connect(m_songLengthSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, &HouseBeatGenerator::onSongLengthChanged);
 
     m_basslineToggle = new QCheckBox("Enable Bassline Engine");
-    m_basslineToggle->setChecked(true);
+    m_basslineToggle->setChecked(false);
 
     m_basslineSelector = new QComboBox();
     for (int i = 1; i <= 30; ++i) {
         m_basslineSelector->addItem(QString("Pattern %1").arg(i));
     }
+
+    m_pianoTriadsToggle = new QCheckBox("Enable Minor Piano Triads");
+    m_pianoTriadsToggle->setChecked(false);
+    topRow1->addWidget(m_pianoTriadsToggle);
 
     m_shuffleDial = new QSpinBox(); m_shuffleDial->setRange(1,7); m_shuffleDial->setValue(1); m_shuffleDial->setSuffix(" Swing");
     connect(m_shuffleDial, QOverload<int>::of(&QSpinBox::valueChanged), this, &HouseBeatGenerator::onSwingGlobalChanged);
@@ -228,8 +229,6 @@ void HouseBeatGenerator::setupUI()
 
     middleRow->addWidget(hwGroup, 1);
     mainLayout->addLayout(middleRow, 2);
-
-
 
     QGroupBox *autoGroup = new QGroupBox("Volume Automation Matrix");
     QVBoxLayout *autoLayout = new QVBoxLayout(autoGroup);
@@ -797,6 +796,11 @@ void HouseBeatGenerator::buildMMP(const QString &filePath)
 
     if (m_basslineToggle->isChecked()) {
         appendBasslineTrackToMMP(doc, trackContainer, totalBars);
+    }
+
+    // ← NEW PIANO BLOCK
+    if (m_pianoTriadsToggle && m_pianoTriadsToggle->isChecked()) {
+        appendPianoTriadsToMMP(doc, trackContainer, totalBars);
     }
 
 
@@ -1400,4 +1404,85 @@ void HouseBeatGenerator::appendBasslineTrackToMMP(QDomDocument &doc, QDomElement
         }
     }
 
+}
+void HouseBeatGenerator::appendPianoTriadsToMMP(QDomDocument &doc, QDomElement &trackContainer, int songBars)
+{
+    int patternIndex = m_basslineSelector->currentIndex();
+    if (patternIndex < 0 || patternIndex >= m_basslinePatterns.size()) return;
+
+    const std::vector<int>& pattern = m_basslinePatterns[patternIndex];
+    int stepsInPattern = pattern.size();
+    int barsInPattern = stepsInPattern / 16;
+
+    int loops = songBars / barsInPattern;
+    if (loops == 0) loops = 1;
+
+    QDomElement track = doc.createElement("track");
+    track.setAttribute("type", "0");
+    track.setAttribute("name", "Deep House Piano Triads");
+    track.setAttribute("muted", "0");
+    track.setAttribute("solo", "0");
+    trackContainer.appendChild(track);
+
+    QDomElement instrTrack = doc.createElement("instrumenttrack");
+    instrTrack.setAttribute("vol", "85");
+    instrTrack.setAttribute("pan", "8");
+    instrTrack.setAttribute("basenote", "69");
+    track.appendChild(instrTrack);
+
+    QDomElement instr = doc.createElement("instrument");
+    instr.setAttribute("name", "xpressive");
+    instrTrack.appendChild(instr);
+
+    QDomElement xp = doc.createElement("xpressive");
+    xp.setAttribute("version", "0.1");
+    // Bright piano/rhodes-style sound perfect for deep house
+    QString pianoFormula = "((sinew(integrate(f)) + 0.65*sinew(integrate(f*2)) + 0.35*sinew(integrate(f*4)) + 0.2*sinew(integrate(f*8))) * exp(-t*14) * v)";
+    xp.setAttribute("O1", pianoFormula);
+    instr.appendChild(xp);
+
+
+    QDomElement eldata = doc.createElement("eldata");
+    QDomElement elvol = doc.createElement("elvol");
+    elvol.setAttribute("att", "0.01");
+    elvol.setAttribute("dec", "0.4");
+    elvol.setAttribute("sus", "0.15");
+    elvol.setAttribute("rel", "0.6");
+    elvol.setAttribute("amt", "1");
+    eldata.appendChild(elvol);
+    instrTrack.appendChild(eldata);
+
+    int speedMultiplier = 4;
+    int tickSpacing = 48 / speedMultiplier;
+    int noteLength = 36 / speedMultiplier;
+
+    for (int l = 0; l < loops; ++l) {
+        QDomElement patternElem = doc.createElement("pattern");
+        int patternPosOffset = l * barsInPattern * 768;
+        patternElem.setAttribute("pos", QString::number(patternPosOffset));
+        patternElem.setAttribute("type", "0");
+        patternElem.setAttribute("len", QString::number(barsInPattern * 768));
+        track.appendChild(patternElem);
+
+        for (int repeat = 0; repeat < speedMultiplier; ++repeat) {
+            int repeatOffset = repeat * (stepsInPattern * tickSpacing);
+
+            for (int step = 0; step < stepsInPattern; ++step) {
+                int root = pattern[step];
+                if (root != -1) {
+
+                    int notes[3] = { root + 24, root + 27, root + 31 };
+
+                    for (int n = 0; n < 3; ++n) {
+                        QDomElement note = doc.createElement("note");
+                        note.setAttribute("pos", QString::number(repeatOffset + (step * tickSpacing)));
+                        note.setAttribute("key", QString::number(notes[n]));
+                        note.setAttribute("vol", "92");
+                        note.setAttribute("len", QString::number(noteLength));
+                        patternElem.appendChild(note);
+                    }
+                }
+            }
+        }
+    }
 }

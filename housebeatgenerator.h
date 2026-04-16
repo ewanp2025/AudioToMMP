@@ -27,6 +27,7 @@ public:
     float getVolumeAtRatio(float ratio) const;
     bool hasAutomation() const;
 
+
 protected:
     void paintEvent(QPaintEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
@@ -101,6 +102,7 @@ private:
     QComboBox *m_filterTypeCombo;
     QComboBox *m_filterModCombo;
     QDoubleSpinBox *m_lfoBarsSpin;
+    QCheckBox *m_pianoTriadsToggle;
 
 
     std::map<QString, QDoubleSpinBox*> m_tuneKnobs;
@@ -124,6 +126,7 @@ private:
 
     void initializeBasslinePatterns();
     void appendBasslineTrackToMMP(QDomDocument &doc, QDomElement &trackContainer, int songBars);
+    void appendPianoTriadsToMMP(QDomDocument &doc, QDomElement &trackContainer, int songBars);
 };
 
 #endif // HOUSEBEATGENERATOR_H
