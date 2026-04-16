@@ -11,7 +11,8 @@ extern "C" {
 #include <QInputDialog>
 #include "smartpatterneditor.h"
 #include "housebeatgenerator.h"
-
+#include "housevocalstabs.h"
+#include "vocalxpresstab.h"
 
 void MainWindow::Biquad::setLPF(float fs, float f0, float Q) {
     float w0 = 2 * M_PI * f0 / fs;
@@ -981,6 +982,20 @@ void MainWindow::setupUI()
     // ========================================================
     m_houseBeatGenerator = new HouseBeatGenerator(this);
     m_mainTabs->addTab(m_houseBeatGenerator, "House Beat Generator");
+
+    // ========================================================
+    // TAB 10: House Vocal Stabs
+    // ========================================================
+    //m_vocalStabsTab = new HouseVocalStabsTab(this);
+    //m_mainTabs->addTab(m_vocalStabsTab, "Vocal Stabs WIP");
+
+    // ========================================================
+    // TAB 11: Text to Sing
+    // ========================================================
+
+    //m_vocalTab = new VocalXpressTab(this);
+    //m_mainTabs->addTab(m_vocalTab, "Text to sing WIP");
+
 }
 
 void MainWindow::openFile()

@@ -25,6 +25,10 @@ set(PROJECT_SOURCES
         smartpatterneditor.h
 	housebeatgenerator.cpp
         housebeatgenerator.h
+        housevocalstabs.cpp
+        housevocalstabs.h
+	vocalxpresstab.cpp
+	vocalxpresstab.h
 
         libs/qcustomplot.cpp
         libs/qcustomplot.h

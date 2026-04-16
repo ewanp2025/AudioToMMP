@@ -26,6 +26,8 @@
 #include <QScrollArea>
 
 class HouseBeatGenerator;
+class HouseVocalStabsTab;
+class VocalXpressTab;
 
 class MainWindow : public QMainWindow
 {
@@ -324,6 +326,8 @@ private:
         float process(float in);
     };
     HouseBeatGenerator *m_houseBeatGenerator;
+    HouseVocalStabsTab *m_vocalStabsTab;
+    VocalXpressTab *m_vocalTab;
 };
 
 
