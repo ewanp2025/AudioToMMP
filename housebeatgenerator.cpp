@@ -131,6 +131,14 @@ void HouseBeatGenerator::setupUI()
     m_songLengthSpin = new QSpinBox(); m_songLengthSpin->setRange(1, 64); m_songLengthSpin->setValue(4); m_songLengthSpin->setSuffix(" Bars");
     connect(m_songLengthSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, &HouseBeatGenerator::onSongLengthChanged);
 
+    m_basslineToggle = new QCheckBox("Enable Bassline Engine");
+    m_basslineToggle->setChecked(true);
+
+    m_basslineSelector = new QComboBox();
+    for (int i = 1; i <= 30; ++i) {
+        m_basslineSelector->addItem(QString("Pattern %1").arg(i));
+    }
+
     m_shuffleDial = new QSpinBox(); m_shuffleDial->setRange(1,7); m_shuffleDial->setValue(1); m_shuffleDial->setSuffix(" Swing");
     connect(m_shuffleDial, QOverload<int>::of(&QSpinBox::valueChanged), this, &HouseBeatGenerator::onSwingGlobalChanged);
 
@@ -142,7 +150,12 @@ void HouseBeatGenerator::setupUI()
     topRow1->addWidget(new QLabel("Shuffle:")); topRow1->addWidget(m_shuffleDial);
     topRow1->addWidget(new QLabel("Ghost Vol:")); topRow1->addWidget(m_ghostIntensity);
     topRow1->addStretch();
+    topRow1->addWidget(m_basslineToggle);
+    topRow1->addWidget(m_basslineSelector);
+
+
     mainLayout->addLayout(topRow1);
+    initializeBasslinePatterns();
 
 
     QHBoxLayout *middleRow = new QHBoxLayout();
@@ -245,6 +258,14 @@ void HouseBeatGenerator::setupUI()
 
     randRow->addWidget(b1); randRow->addWidget(b2); randRow->addWidget(b3); randRow->addWidget(m_btnDuplicate16);
     randRow->addWidget(b1); randRow->addWidget(b2); randRow->addWidget(b3);
+
+
+    m_btnRandomDeepHouse = new QPushButton("Random Deep House");
+    m_btnRandomDeepHouse->setStyleSheet("background-color:#2a4a6e; color:white; font-weight:bold; padding:8px;");
+    randRow->addWidget(m_btnRandomDeepHouse);
+    connect(m_btnRandomDeepHouse, &QPushButton::clicked, this, &HouseBeatGenerator::onRandomDeepHouseClicked);
+
+
     mainLayout->addLayout(randRow);
     connect(b1, &QPushButton::clicked, this, &HouseBeatGenerator::onRandomSnareBuild);
     connect(b2, &QPushButton::clicked, this, &HouseBeatGenerator::onRandomSnarePattern);
@@ -331,13 +352,11 @@ void HouseBeatGenerator::updateCell(int row, int col) {
 }
 
 void HouseBeatGenerator::createPresets() {
-    m_presets.resize(30, std::vector<std::vector<float>>(m_drums.size(), std::vector<float>(64, 0.0f)));
-
+    m_presets.resize(30, std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f)));
 
     auto setNotes = [&](int pIdx, int dIdx, std::initializer_list<int> notes, float vol = 1.0f) {
         for (int n : notes) m_presets[pIdx][dIdx][n] = vol;
     };
-
 
     auto fill64 = [&](int pIdx) {
         for (int r = 0; r < 13; ++r) {
@@ -351,270 +370,118 @@ void HouseBeatGenerator::createPresets() {
     };
 
 
-    m_presets[0] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
-    for (int i = 0; i < 64; i += 4) { m_presets[0][0][i] = 1.0f; m_presets[0][1][i+2] = 1.0f; }
-    for (int i = 0; i < 64; ++i) m_presets[0][3][i] = 1.0f;
+    for (int p = 0; p < 25; ++p) {
+        int barOffset = (p % 5) * 4;
 
 
-    m_presets[1] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
-    for (int i = 0; i < 64; i += 4) { m_presets[1][0][i] = 1.0f; m_presets[1][4][i+2] = 1.0f; }
-    setNotes(1, 1, {4,12,20,28,36,44,52,60, 15,31,47,63});
-    setNotes(1, 1, {59,62});
-    setNotes(1, 3, {0,1,4,7,8,12,13,15,16,17,20,23,24,28,29,31,32,33,36,39,40,44,45,47,48,49,52,55,56,60,61,63});
-    setNotes(1, 5, {12, 60}, 0.72f);
+        for (int i = 0; i < 64; i += 4) m_presets[p][0][i] = 1.0f;
+        if (p % 3 == 0) m_presets[p][0][28] = 0.0f;
 
 
-    m_presets[2] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
-    for(int i = 0; i < 64; i += 4) m_presets[2][0][i] = 1.0f;
-    setNotes(2, 1, {2,10,18,22,26,30,34,38,42,46,50,52,53,54,55,56,58,59,60,61});
-    setNotes(2, 1, {3,7,11,15,63}, 0.72f);
-    setNotes(2, 2, {2,6,10,14,18,22,26,30,34,38,42,46,58,60,61});
-    setNotes(2, 3, {0,1,4,7,8,12,13,15,16,17,20,23,24,28,29,31,32,33,36,39,40,44,45,47,48,49,52,55,56,60,61,63});
-    setNotes(2, 4, {3,7,10,11,15,19,23,27,31,35,39,43,47,51,55,59,63});
-    setNotes(2, 5, {1,5,8,9,13,17,21,25,29,33,37,41,45,49,53,57,61});
-    for(int i = 6; i < 64; i += 16) m_presets[2][6][i] = 1.0f;
-    for(int i = 7; i < 64; i += 16) m_presets[2][7][i] = 1.0f;
-    for(int i = 8; i < 64; i += 16) m_presets[2][8][i] = 1.0f;
-    for(int i = 1; i < 64; i += 2) m_presets[2][9][i] = 1.0f;
-    for(int b = 0; b < 64; b += 16) setNotes(2, 10, {b+2, b+3, b+6, b+8, b+10, b+13});
-    for(int i = 3; i < 64; i += 4) m_presets[2][11][i] = 1.0f;
-
-
-    m_presets[3] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
-    for (int b = 0; b < 64; b += 16) {
-        setNotes(3, 0, {b, b+4, b+8, b+12});
-        setNotes(3, 1, {b+4, b+12});
-        for (int i = 0; i < 16; ++i) m_presets[3][3][b + i] = 1.0f;
-        setNotes(3, 4, {b+3}, 0.9f); setNotes(3, 4, {b+11}, 0.85f);
-        setNotes(3, 6, {b+5}, 0.72f); setNotes(3, 6, {b+21}, 0.68f);
-        setNotes(3, 11, {b+10}, 0.65f); setNotes(3, 11, {b+26}, 0.62f);
-    }
-    m_presets[3][12][63] = 1.0f;
-
-
-    m_presets[4] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
-    for (int i = 0; i < 64; i += 4) m_presets[4][0][i] = 1.0f;
-    setNotes(4, 1, {4, 12, 20, 28, 34, 38, 42, 46, 50, 54, 58, 62});
-    for (int i = 0; i < 64; ++i) m_presets[4][3][i] = 1.0f;
-    for (int i = 7; i < 64; i += 16) setNotes(4, 4, {i, i+8});
-
-
-    m_presets[5] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
-    setNotes(5, 0, {0,4,8,12});
-    setNotes(5, 1, {4,8,12});
-    setNotes(5, 2, {8});
-    for(int i=0; i<=14; i+=2) m_presets[5][3][i] = 1.0f;
-    setNotes(5, 4, {5,11,15});
-    setNotes(5, 5, {3,7,11,15});
-    fill64(5);
-
-
-    m_presets[6] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
-    setNotes(6, 0, {0,3,6,8,11,14});
-    setNotes(6, 1, {4,12});
-    setNotes(6, 2, {8});
-    for(int i=0; i<16; ++i) m_presets[6][3][i] = 1.0f;
-    setNotes(6, 4, {7,11,15});
-    setNotes(6, 5, {1,5,9,13});
-    setNotes(6, 6, {10});
-    fill64(6);
-
-
-    m_presets[7] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
-    setNotes(7, 0, {0,4,8,12});
-    setNotes(7, 1, {4,12});
-    setNotes(7, 2, {8});
-    for(int i=0; i<16; ++i) m_presets[7][3][i] = 1.0f;
-    setNotes(7, 4, {3,7,11,15});
-    setNotes(7, 5, {15});
-    fill64(7);
-
-
-    m_presets[8] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
-    setNotes(8, 0, {0,8,11,16,19,25,32});
-    setNotes(8, 1, {1,2,9,10});
-    setNotes(8, 2, {4,12,20,28,30});
-    setNotes(8, 2, {6,9,15,23,27,29,31}, 0.72f);
-    setNotes(8, 3, {0,1,3,4,5,7,8,9,11,12,13,15,16,17,19,20,21,23,24,25,27,28,29,31});
-    for(int i=2; i<=30; i+=4) m_presets[8][4][i] = 1.0f;
-
-
-    m_presets[9] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
-    for(int i=0; i<64; i+=4) m_presets[9][0][i] = 1.0f;
-    setNotes(9, 0, {10,26,42,58}, 0.72f);
-    setNotes(9, 1, {4,7,9,12,15,20,23,25,28,31,36,39,41,44,47,52,55,57,60,63});
-    for(int i=1; i<64; i+=2) m_presets[9][3][i] = 1.0f;
-    for(int b=0; b<64; b+=16) setNotes(9, 4, {b+2, b+6, b+10, b+13});
-
-      m_presets[10] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
-    setNotes(10, 0, {0, 4, 8, 12});
-    setNotes(10, 1, {4, 12});
-    setNotes(10, 1, {7, 10, 15}, 0.65f);
-    setNotes(10, 2, {4, 12}, 0.8f);
-    setNotes(10, 3, {0, 1, 3, 4, 5, 7, 8, 9, 11, 12, 13, 15}, 0.7f);
-    setNotes(10, 4, {2, 6, 10, 14});
-    setNotes(10, 6, {11, 14});
-    setNotes(10, 7, {8});
-    fill64(10);
-
-    m_presets[11] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
-    setNotes(11, 0, {0, 4, 8, 12});
-    setNotes(11, 2, {4, 12});
-    setNotes(11, 5, {3, 8, 11}, 0.85f);
-    setNotes(11, 3, {2, 6, 10, 14}, 0.6f);
-    setNotes(11, 4, {2, 6, 10, 14}, 0.9f);
-    setNotes(11, 9, {0, 3, 6, 9, 12, 15}, 0.65f);
-    fill64(11);
-    setNotes(11, 0, {60, 63});
-    setNotes(11, 5, {58, 61, 62});
-
-    m_presets[12] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
-    setNotes(12, 0, {0, 4, 8, 12, 15});
-    setNotes(12, 1, {4, 12});
-    setNotes(12, 3, {1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15}, 0.65f);
-    setNotes(12, 4, {2, 6, 10, 14}, 0.85f);
-    setNotes(12, 10, {7, 15}, 0.75f);
-    fill64(12);
-
-    m_presets[13] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
-    for (int s = 0; s < 16; ++s) {
-        m_presets[13][0][s*4] = 1.0f;
-        m_presets[13][1][s*4 + 2] = 1.0f;
-        m_presets[13][3][s*4] = 1.0f;
-    }
-
-
-    m_presets[14] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
-    for (int bar = 0; bar < 4; ++bar) {
-        int b = bar * 16;
-        setNotes(14, 0, {b+0, b+4, b+8, b+12});
-        setNotes(14, 1, {b+4, b+12});
-        setNotes(14, 2, {b+12}, 0.82f);
-
-
-        for (int i = 0; i < 16; ++i) m_presets[14][3][b+i] = 0.88f;
-
-
-        if (bar % 2 == 1) m_presets[14][4][b+14] = 0.92f;
-
-
-        setNotes(14, 11, {b+2, b+6, b+10, b+14}, 0.78f);
-
-
-        for (int i = 1; i < 16; i += 2) m_presets[14][9][b+i] = 0.62f;
-    }
-
-
-    m_presets[15] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
-    for (int bar = 0; bar < 4; ++bar) {
-        int b = bar * 16;
-        setNotes(15, 0, {b+0, b+4, b+8, b+12});
-        setNotes(15, 1, {b+4, b+12});
-        setNotes(15, 2, {b+4, b+12}, 0.75f);
-
-
-        for (int i = 0; i < 16; ++i) {
-            m_presets[15][3][b+i] = (i % 4 == 0 || i % 4 == 2) ? 0.92f : 0.68f;
+        for (int b = 0; b < 64; b += 16) {
+            m_presets[p][1][b+4] = 1.0f;
+            m_presets[p][1][b+12] = 1.0f;
+            if (p % 2 == 1) {
+                m_presets[p][1][b+2] = 0.65f;
+                m_presets[p][1][b+10] = 0.70f;
+            }
         }
 
 
-        m_presets[15][4][b+14] = 0.88f;
+        for (int i = 1; i < 64; i += 2) {
+            float vel = (i % 8 == 0) ? 0.95f : 0.52f + (rand() % 35)/100.0f;
+            m_presets[p][3][i] = vel;
+        }
+        for (int i = 0; i < 64; i += 4) {
+            if (p % 4 != 0) m_presets[p][3][i] = 0.42f;
+        }
 
 
-        setNotes(15, 5, {b+2, b+10}, 0.72f);
+        for (int b = 0; b < 64; b += 16) {
+            if (p % 3 != 2) m_presets[p][4][b+14] = 0.88f;
+        }
 
 
-        setNotes(15, 11, {b+1, b+5, b+9, b+13}, 0.82f);
-        setNotes(15, 11, {b+3, b+7, b+11}, 0.58f);
-        for (int i = 1; i < 16; i += 2) m_presets[15][9][b+i] = 0.65f;
+        for (int i = 1; i < 64; i += 2) {
+            if ((i % 4) != 0) m_presets[p][9][i] = 0.58f + (rand() % 25)/100.0f;
+        }
+
+
+        for (int b = 0; b < 64; b += 16) {
+            m_presets[p][11][b+2] = 0.78f;
+            m_presets[p][11][b+6] = 0.65f;
+            m_presets[p][11][b+10] = 0.82f;
+            m_presets[p][11][b+14] = (p % 3 == 0) ? 0.72f : 0.0f;
+        }
+
+
+        if (p % 4 == 1) {
+            m_presets[p][5][10] = 0.75f;
+            m_presets[p][5][42] = 0.78f;
+        }
+
+
+        if (p % 7 == 0) m_presets[p][10][52] = 0.62f;
+
+        fill64(p);
     }
 
 
-    m_presets[16] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
     for (int bar = 0; bar < 4; ++bar) {
         int b = bar * 16;
-        setNotes(16, 0, {b+0, b+4, b+8, b+12});
-        setNotes(16, 1, {b+12});
-        setNotes(16, 2, {b+4}, 0.85f);
-
-
-        for (int i = 2; i < 16; i += 2) m_presets[16][3][b+i] = 0.85f;
-
-
-        if (bar == 3) m_presets[16][4][b+14] = 0.95f;
-
-
-        setNotes(16, 10, {b+6, b+14}, 0.55f);
-        setNotes(16, 11, {b+3, b+11}, 0.78f);
+        setNotes(25, 0, {b+0, b+4, b+8, b+12});
+        setNotes(25, 2, {b+4, b+12}, 0.85f);
+        setNotes(25, 3, {b+2, b+6, b+10, b+14}, 0.90f);
+        setNotes(25, 3, {b+1, b+3, b+7, b+9, b+11, b+15}, 0.35f);
+        setNotes(25, 4, {b+2, b+10}, 0.80f);
+        setNotes(25, 11, {b+7, b+14, b+15}, 0.75f);
+        if (bar % 2 == 1) setNotes(25, 5, {b+15}, 0.85f);
     }
 
 
-    m_presets[17] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
     for (int bar = 0; bar < 4; ++bar) {
         int b = bar * 16;
-
-
-        setNotes(17, 0, {b+0, b+4, b+8, b+12}, 0.86f);
-
-
-        setNotes(17, 1, {b+4, b+12}, 0.90f);
-
-
-        m_presets[17][3][b+0]  = 0.55f; // Vel 70
-        m_presets[17][3][b+2]  = 0.78f; // Vel 100
-        m_presets[17][3][b+4]  = 0.55f; // Vel 70
-        m_presets[17][3][b+6]  = 0.82f; // Vel 105
-        m_presets[17][3][b+8]  = 0.59f; // Vel 75
-        m_presets[17][3][b+10] = 0.78f; // Vel 100
-        m_presets[17][3][b+12] = 0.55f; // Vel 70
-        m_presets[17][3][b+14] = 0.86f; // Vel 110
-
-
-        m_presets[17][1][b+1]  = 0.20f;
-        m_presets[17][5][b+3]  = 0.23f;
-        m_presets[17][1][b+5]  = 0.31f;
-        m_presets[17][4][b+7]  = 0.27f;
-        m_presets[17][1][b+9]  = 0.15f;
-        m_presets[17][6][b+15] = 0.31f;
+        setNotes(26, 0, {b+0, b+4, b+8, b+12});
+        setNotes(26, 0, {b+15}, 0.40f);
+        setNotes(26, 1, {b+4, b+12}, 0.70f);
+        for (int i = 0; i < 16; ++i) m_presets[26][3][b+i] = 0.50f;
+        setNotes(26, 3, {b+2, b+6, b+10, b+14}, 0.95f);
+        setNotes(26, 6, {b+3, b+8, b+11}, 0.65f);
     }
 
-     m_presets[18] = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
 
-
-    for (int bar = 0; bar < 3; ++bar) {
+    for (int bar = 0; bar < 4; ++bar) {
         int b = bar * 16;
-        setNotes(18, 0, {b+0, b+4, b+8, b+12}, 0.86f);
-        setNotes(18, 1, {b+4, b+12}, 0.90f);
-        setNotes(18, 4, {b+2, b+6, b+10, b+14}, 0.80f);
-        for(int i = 0; i < 16; ++i) if(i % 4 != 2) m_presets[18][3][b+i] = 0.60f;
+        setNotes(27, 0, {b+0, b+4, b+8, b+12});
+        setNotes(27, 2, {b+4, b+12}, 0.80f);
+        setNotes(27, 4, {b+2, b+6, b+10, b+14}, 0.90f);
+        setNotes(27, 5, {b+3, b+6, b+9, b+14}, 0.75f);
+        setNotes(27, 11, {b+5, b+13}, 0.80f);
     }
 
 
-    int b4 = 48;
+    for (int i = 0; i < 64; i += 4) m_presets[28][0][i] = 1.0f;
+    for (int b = 0; b < 64; b += 16) {
+        m_presets[28][1][b+4] = 1.0f; m_presets[28][1][b+12] = 1.0f;
+        m_presets[28][4][b+14] = 0.90f;
+        m_presets[28][9][b+1] = m_presets[28][9][b+3] = m_presets[28][9][b+5] = m_presets[28][9][b+7] = 0.65f;
+        m_presets[28][11][b+2] = 0.78f; m_presets[28][11][b+6] = 0.72f; m_presets[28][11][b+10] = 0.80f;
+    }
+    for (int i = 1; i < 64; i += 2) m_presets[28][3][i] = (i%8==0) ? 0.92f : 0.58f;
 
 
-    m_presets[18][0][b4+0] = 0.86f;
-    m_presets[18][4][b4+2] = 0.80f;
-
-
-    m_presets[18][0][b4+4] = 0.86f;
-    m_presets[18][1][b4+4] = 0.90f;
-    m_presets[18][4][b4+6] = 0.80f;
-
-
-    m_presets[18][0][b4+8] = 0.86f;
-    m_presets[18][8][b4+8] = 0.70f;
-    m_presets[18][4][b4+10] = 0.80f;
-    m_presets[18][7][b4+10] = 0.75f;
-    m_presets[18][1][b4+11] = 0.86f;
-
-
-    m_presets[18][6][b4+13] = 0.80f;
-    m_presets[18][4][b4+14] = 0.80f;
-    m_presets[18][2][b4+14] = 0.95f;
-    m_presets[18][3][b4+15] = 0.31f;
-
-
+    for (int i = 0; i < 64; i += 4) m_presets[29][0][i] = 1.0f;
+    for (int bar = 0; bar < 4; ++bar) {
+        int b = bar * 16;
+        m_presets[29][1][b+4] = 1.0f;
+        m_presets[29][1][b+12] = 1.0f;
+        m_presets[29][5][b+10] = 0.78f;
+        m_presets[29][11][b+1] = 0.82f; m_presets[29][11][b+5] = 0.75f;
+        m_presets[29][11][b+9] = 0.80f; m_presets[29][11][b+13] = 0.70f;
+    }
+    for (int i = 1; i < 64; i += 2) {
+        m_presets[29][3][i] = (i % 8 == 0) ? 0.92f : 0.68f;
+    }
 }
 
 void HouseBeatGenerator::applyPreset(int index) {
@@ -923,8 +790,15 @@ void HouseBeatGenerator::buildMMP(const QString &filePath)
                 QDomElement timeNode = doc.createElement("time"); timeNode.setAttribute("pos", QString::number(t)); timeNode.setAttribute("value", QString::number(val)); timeNode.setAttribute("outValue", QString::number(val)); apatternNode.appendChild(timeNode);
             }
         }
+        // ... (end of the big for loop generating drums)
         QDomElement objNode = doc.createElement("object"); objNode.setAttribute("id", QString::number(filterFreqId)); apatternNode.appendChild(objNode);
     }
+
+
+    if (m_basslineToggle->isChecked()) {
+        appendBasslineTrackToMMP(doc, trackContainer, totalBars);
+    }
+
 
     QDomElement bbtco = doc.createElement("bbtco");
     bbtco.setAttribute("len", QString::number(totalBars * 768)); bbtco.setAttribute("pos", "0");
@@ -937,7 +811,24 @@ void HouseBeatGenerator::buildMMP(const QString &filePath)
 }
 
 void HouseBeatGenerator::onRandomSnareBuild() { applyPreset(m_presetCombo->currentIndex()); }
-void HouseBeatGenerator::onRandomSnarePattern() { applyPreset(m_presetCombo->currentIndex()); }
+
+void HouseBeatGenerator::onRandomSnarePattern() {
+
+    std::vector<int> fillSteps = {23, 47, 54, 57, 58, 61, 63};
+
+
+    for (int step : fillSteps) {
+        m_velocities[1][step] = 1.00f;
+        updateCell(1, step);
+    }
+
+
+    int idx = m_presetCombo->currentIndex();
+    if (idx >= 0 && idx < (int)m_presets.size()) {
+        m_presets[idx] = m_velocities;
+    }
+}
+
 void HouseBeatGenerator::onRandomRimshotPattern() { applyPreset(m_presetCombo->currentIndex()); }
 
 void HouseBeatGenerator::onDevDumpClicked()
@@ -1053,4 +944,208 @@ void HouseBeatGenerator::onDevLoadClicked()
     }
 
     QMessageBox::information(this, "Success", "MMP pattern loaded and snapped to grid!");
+}
+void HouseBeatGenerator::onRandomDeepHouseClicked()
+{
+    m_velocities = std::vector<std::vector<float>>(13, std::vector<float>(64, 0.0f));
+    auto rng = QRandomGenerator::global();
+
+
+    for (int i = 0; i < 64; i += 4) {
+        m_velocities[0][i] = 1.0f;
+    }
+    if (rng->bounded(100) < 35) m_velocities[0][28] = 0.0f;
+
+
+    for (int bar = 0; bar < 4; ++bar) {
+        int b = bar * 16;
+        m_velocities[1][b + 4] = 1.0f;
+        m_velocities[1][b + 12] = 1.0f;
+        if (rng->bounded(100) < 45) m_velocities[1][b + 2] = 0.68f;  // ghost
+        if (rng->bounded(100) < 30) m_velocities[1][b + 10] = 0.72f; // ghost
+    }
+
+
+    for (int i = 1; i < 64; i += 2) {
+        float vel = (i % 8 == 0) ? 0.95f : 0.55f + rng->generateDouble() * 0.35f;
+        m_velocities[3][i] = vel;
+    }
+    for (int i = 0; i < 64; i += 4) {
+        if (rng->bounded(100) < 65) m_velocities[3][i] = 0.45f;
+    }
+
+
+    for (int bar = 0; bar < 4; ++bar) {
+        int b = bar * 16;
+        if (rng->bounded(100) < 80) m_velocities[4][b + 14] = 0.88f;
+    }
+
+
+    for (int i = 1; i < 64; i += 2) {
+        if (rng->bounded(100) < 75) m_velocities[9][i] = 0.62f + rng->generateDouble() * 0.25f;
+    }
+
+
+    for (int bar = 0; bar < 4; ++bar) {
+        int b = bar * 16;
+        m_velocities[11][b + 2] = 0.75f;
+        m_velocities[11][b + 6] = 0.68f;
+        m_velocities[11][b + 10] = 0.82f;
+        if (rng->bounded(100) < 60) m_velocities[11][b + 14] = 0.70f;
+    }
+
+
+    if (rng->bounded(100) < 70) {
+        m_velocities[5][10] = 0.78f;
+        m_velocities[5][42] = 0.75f;
+    }
+
+
+    if (rng->bounded(100) < 40) m_velocities[10][52] = 0.65f;
+
+
+    for (int r = 0; r < 13; ++r) {
+        for (int c = 0; c < 64; ++c) {
+            updateCell(r, c);
+        }
+    }
+
+    int idx = m_presetCombo->currentIndex();
+    if (idx >= 0 && idx < (int)m_presets.size()) {
+        m_presets[idx] = m_velocities;
+    }
+}
+void HouseBeatGenerator::initializeBasslinePatterns() {
+    m_basslinePatterns.clear();
+
+    const int R = 33;   // A1
+    const int b3 = 36;  // C2
+    const int p5 = 39;  // E2
+    const int M6 = 41;  // F#2
+    const int b7 = 43;  // G2
+    const int O  = 45;  // A2
+    const int _  = -1;
+
+
+    m_basslinePatterns.push_back({_,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_}); // 1 classic off-beat
+    m_basslinePatterns.push_back({_,R,_,_, R,_,O,_, _,R,_,_, R,_,O,_, _,R,_,_, R,_,O,_, _,R,_,_, R,_,b7,_}); // 2 call & response
+    m_basslinePatterns.push_back({_,_,R,_, _,_,M6,_, _,_,R,_, _,_,p5,_, _,_,R,_, _,_,M6,_, _,_,R,_, _,_,b7,_}); // 3 Dorian flavour
+    m_basslinePatterns.push_back({R,_,_,R, _,_,R,_, R,_,_,R, _,_,R,_, R,_,_,R, _,_,R,_, R,_,_,R, _,_,M6,_}); // 4 rolling but airy
+    m_basslinePatterns.push_back({_,R,R,_, _,R,_,_, _,R,R,_, _,R,_,b7, _,R,R,_, _,R,_,_, _,R,R,_, _,R,_,O}); // 5 groovy
+
+
+    m_basslinePatterns.push_back({R,_,_,_, _,R,_,R, _,_,R,_, R,_,_,_, _,R,_,_, _,R,_,R, _,_,R,_, R,_,_,O}); // 6
+    m_basslinePatterns.push_back({_,_,R,_, R,_,_,R, _,_,M6,_, _,_,R,_, _,_,R,_, R,_,_,R, _,_,b7,_, _,_,R,_}); // 7
+    m_basslinePatterns.push_back({R,_,R,_, _,R,_,_, R,_,R,_, _,M6,_,_, R,_,R,_, _,R,_,_, R,_,R,_, _,b7,_,_}); // 8
+    m_basslinePatterns.push_back({_,R,_,R, _,_,R,_, _,R,_,R, _,_,M6,_, _,R,_,R, _,_,R,_, _,R,_,R, _,_,O,_}); // 9
+    m_basslinePatterns.push_back({R,_,_,R, R,_,R,_, _,_,R,_, R,_,_,R, R,_,_,R, R,_,R,_, _,_,R,_, R,_,_,b7}); // 10
+
+
+    m_basslinePatterns.push_back({R,_,_,_, _,_,R,_, _,_,_,_, R,_,_,_, _,_,R,_, _,_,_,_, R,_,_,_, _,_,M6,_}); // 13
+    m_basslinePatterns.push_back({_,_,R,_, _,R,_,_, _,_,R,_, _,_,_,_, _,_,R,_, _,R,_,_, _,_,R,_, _,_,b7,_}); // 14
+    m_basslinePatterns.push_back({R,_,_,_, _,_,_,R, _,_,R,_, _,_,_,_, R,_,_,_, _,_,_,R, _,_,R,_, _,_,O,_}); // 15
+    m_basslinePatterns.push_back({_,R,_,_, _,_,R,_, _,R,_,_, _,_,M6,_, _,R,_,_, _,_,R,_, _,R,_,_, _,_,b7,_}); // 16
+    m_basslinePatterns.push_back({R,_,_,R, _,_,_,_, R,_,_,R, _,_,_,_, R,_,_,R, _,_,_,_, R,_,_,R, _,_,M6,_}); // 17
+    m_basslinePatterns.push_back({_,_,R,R, _,R,_,_, _,_,R,R, _,R,_,b7, _,_,R,R, _,R,_,_, _,_,R,R, _,R,_,O}); // 18
+
+
+    m_basslinePatterns.push_back({_,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_}); // 21 (your #1)
+    m_basslinePatterns.push_back({R,_,_,R, _,_,R,_, _,R,_,_, R,_,_,_, R,_,_,R, _,_,R,_, _,R,_,_, p5,_,_,_}); // 22
+    m_basslinePatterns.push_back({R,_,R,_, R,_,_,_, b3,_,b3,_, b3,_,_,_, p5,_,p5,_, p5,_,_,_, M6,_,M6,_, M6,_,_,_}); // 23
+    m_basslinePatterns.push_back({_,_,R,_, R,_,R,_, _,_,b3,_, b3,_,b3,_, _,_,p5,_, p5,_,p5,_, _,_,O,_, O,_,O,_}); // 24
+    m_basslinePatterns.push_back({R,_,_,_, R,_,_,_, _,R,_,_, R,_,_,_, R,_,_,_, R,_,_,_, _,O,_,_, p5,_,_,_}); // 25
+
+
+    m_basslinePatterns.push_back({R,_,_,R, _,_,R,_, _,R,_,_, _,_,_,_, R,_,_,R, _,_,R,_, _,R,_,_, O,_,O,_}); // 26
+    m_basslinePatterns.push_back({_,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, O,_,O,_}); // 27
+    m_basslinePatterns.push_back({R,_,_,_, _,_,R,_, _,_,_,R, _,R,_,_, R,_,_,_, _,_,R,_, _,_,R,_, O,_,b7,_}); // 28
+    m_basslinePatterns.push_back({R,R,_,R, _,R,R,_, R,R,_,R, _,R,R,_, R,R,_,R, _,R,R,_, R,R,_,R, _,M6,M6,_}); // 29 (controlled roll)
+    m_basslinePatterns.push_back({R,_,_,R, _,O,_,_, R,_,_,R, _,O,_,_, R,_,_,R, _,O,_,_, R,_,_,R, _,M6,_,b7}); // 30 (octave jump but tasteful)
+}
+
+void HouseBeatGenerator::appendBasslineTrackToMMP(QDomDocument &doc, QDomElement &trackContainer, int songBars) {
+    int patternIndex = m_basslineSelector->currentIndex();
+    if (patternIndex < 0 || patternIndex >= m_basslinePatterns.size()) return;
+
+    const std::vector<int>& pattern = m_basslinePatterns[patternIndex];
+    int stepsInPattern = pattern.size();
+    int barsInPattern = stepsInPattern / 16;
+
+
+    int loops = songBars / barsInPattern;
+    if (loops == 0) loops = 1;
+
+    QDomElement track = doc.createElement("track");
+    track.setAttribute("type", "0");
+    track.setAttribute("name", "Deep House Sub");
+    track.setAttribute("muted", "0");
+    track.setAttribute("solo", "0");
+    trackContainer.appendChild(track);
+
+
+    QDomElement instrTrack = doc.createElement("instrumenttrack");
+    instrTrack.setAttribute("vol", "100");
+    instrTrack.setAttribute("pan", "0");
+    instrTrack.setAttribute("basenote", "57"); // Standard LMMS root alignment
+    track.appendChild(instrTrack);
+
+    QDomElement instr = doc.createElement("instrument");
+    instr.setAttribute("name", "xpressive");
+    instrTrack.appendChild(instr);
+
+
+    QDomElement xp = doc.createElement("xpressive");
+    xp.setAttribute("version", "0.1");
+
+    QString stingrayFormula = "((  1.0 * sinew(integrate(f)) * exp(-t*0.5) +   0.6 * sinew(integrate(f*2)) * exp(-t*1.5) +   0.3 * sinew(integrate(f*3)) * exp(-t*6.0) +   0.15 * sinew(integrate(f*4)) * exp(-t*12.0) +  0.05 * sinew(integrate(f*8)) * exp(-t*20.0)) * v)";
+
+    xp.setAttribute("O1", stingrayFormula);
+    instr.appendChild(xp);
+
+
+    QDomElement eldata = doc.createElement("eldata");
+    QDomElement elvol = doc.createElement("elvol");
+    elvol.setAttribute("att", "0");
+    elvol.setAttribute("dec", "0.3");
+    elvol.setAttribute("sus", "0");
+    elvol.setAttribute("rel", "0.1");
+    elvol.setAttribute("amt", "1");
+    eldata.appendChild(elvol);
+    instrTrack.appendChild(eldata);
+
+    int speedMultiplier = 4; // Set to 2 for double speed, 4 for quadruple speed
+    int tickSpacing = 48 / speedMultiplier;
+    int noteLength = 36 / speedMultiplier; // Shorten the note length so they don't overlap when sped up
+
+
+    for (int l = 0; l < loops; ++l) {
+        QDomElement patternElem = doc.createElement("pattern");
+        int patternPosOffset = l * barsInPattern * 768;
+
+        patternElem.setAttribute("pos", QString::number(patternPosOffset));
+        patternElem.setAttribute("type", "0"); // type="0" is Piano Roll / Main Editor
+        patternElem.setAttribute("len", QString::number(barsInPattern * 768)); // Absolute length in ticks
+        track.appendChild(patternElem);
+
+
+        for (int repeat = 0; repeat < speedMultiplier; ++repeat) {
+            int repeatOffset = repeat * (stepsInPattern * tickSpacing);
+
+            for (int step = 0; step < stepsInPattern; ++step) {
+                if (pattern[step] != -1) {
+                    QDomElement note = doc.createElement("note");
+
+                    int notePos = repeatOffset + (step * tickSpacing);
+
+                    note.setAttribute("pos", QString::number(notePos));
+                    note.setAttribute("key", QString::number(pattern[step]));
+                    note.setAttribute("vol", "100");
+                    note.setAttribute("len", QString::number(noteLength));
+
+                    patternElem.appendChild(note);
+                }
+            }
+        }
+    }
+
 }

@@ -16,6 +16,7 @@
 #include <QtXml>
 #include <vector>
 #include <map>
+#include <QCheckBox>
 
 
 class VolumeAutomationLane : public QWidget {
@@ -71,6 +72,7 @@ private slots:
     void onRandomRimshotPattern();
     void onDuplicate16Clicked();
     void onDevLoadClicked();
+    void onRandomDeepHouseClicked();
 
 private:
     void setupUI();
@@ -90,7 +92,7 @@ private:
     QPushButton *m_btnExport;
     QPushButton *m_btnDevDump;
     QPushButton *m_btnDuplicate16;
-
+    QPushButton *m_btnRandomDeepHouse;
 
     QComboBox *m_closedHatVelCombo;
     QComboBox *m_openHatVelCombo;
@@ -113,6 +115,15 @@ private:
     std::vector<Drum> m_drums;
     std::vector<std::vector<float>> m_velocities;
     std::vector<std::vector<std::vector<float>>> m_presets;
+
+    QCheckBox *m_basslineToggle;
+    QComboBox *m_basslineSelector;
+
+    std::vector<std::vector<int>> m_basslinePatterns;
+
+
+    void initializeBasslinePatterns();
+    void appendBasslineTrackToMMP(QDomDocument &doc, QDomElement &trackContainer, int songBars);
 };
 
 #endif // HOUSEBEATGENERATOR_H
