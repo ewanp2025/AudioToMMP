@@ -1018,49 +1018,81 @@ void HouseBeatGenerator::onRandomDeepHouseClicked()
 void HouseBeatGenerator::initializeBasslinePatterns() {
     m_basslinePatterns.clear();
 
-    const int R = 33;   // A1
-    const int b3 = 36;  // C2
-    const int p5 = 39;  // E2
-    const int M6 = 41;  // F#2
-    const int b7 = 43;  // G2
-    const int O  = 45;  // A2
-    const int _  = -1;
+
+    const int R  = 33;  // A1 (Root)
+    const int M2 = 35;  // B1 (Major 2nd - Great passing note)
+    const int b3 = 36;  // C2 (Minor 3rd - The deep house soul)
+    const int p4 = 38;  // D2 (Perfect 4th - Funky turnaround note)
+    const int p5 = 39;  // E2 (Perfect 5th - Powerful anchor)
+    const int M6 = 41;  // F#2 (Major 6th - Classic Dorian flavor)
+    const int b7 = 43;  // G2 (Minor 7th - Essential for the groove)
+    const int O  = 45;  // A2 (Octave)
+    const int _  = -1;  // Rest
 
 
-    m_basslinePatterns.push_back({_,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_}); // 1 classic off-beat
-    m_basslinePatterns.push_back({_,R,_,_, R,_,O,_, _,R,_,_, R,_,O,_, _,R,_,_, R,_,O,_, _,R,_,_, R,_,b7,_}); // 2 call & response
-    m_basslinePatterns.push_back({_,_,R,_, _,_,M6,_, _,_,R,_, _,_,p5,_, _,_,R,_, _,_,M6,_, _,_,R,_, _,_,b7,_}); // 3 Dorian flavour
-    m_basslinePatterns.push_back({R,_,_,R, _,_,R,_, R,_,_,R, _,_,R,_, R,_,_,R, _,_,R,_, R,_,_,R, _,_,M6,_}); // 4 rolling but airy
-    m_basslinePatterns.push_back({_,R,R,_, _,R,_,_, _,R,R,_, _,R,_,b7, _,R,R,_, _,R,_,_, _,R,R,_, _,R,_,O}); // 5 groovy
+    m_basslinePatterns.push_back({R,_,_,_, _,_,R,_, _,_,_,R, _,b3,_,_, R,_,_,_, _,_,p5,_, _,_,_,b7, _,O,_,_});
+
+    m_basslinePatterns.push_back({_,_,b3,_, R,_,_,_, _,_,p5,_, R,_,_,_, _,_,M2,_, R,_,_,_, _,_,b7,_, O,_,_,_});
+
+    m_basslinePatterns.push_back({R,_,_,R, _,_,p5,_, _,_,R,_, _,_,b3,_, R,_,_,R, _,_,p5,_, _,_,b7,_, _,_,O,_});
+
+    m_basslinePatterns.push_back({R,_,_,_, _,b3,_,_, _,_,_,_, p5,_,_,_, _,_,R,_, _,_,_,_, b7,_,_,_, _,O,_,_});
+
+    m_basslinePatterns.push_back({_,R,_,_, R,_,_,_, _,p5,_,_, b3,_,_,_, _,R,_,_, R,_,_,_, _,b7,_,_, O,_,_,_});
 
 
-    m_basslinePatterns.push_back({R,_,_,_, _,R,_,R, _,_,R,_, R,_,_,_, _,R,_,_, _,R,_,R, _,_,R,_, R,_,_,O}); // 6
-    m_basslinePatterns.push_back({_,_,R,_, R,_,_,R, _,_,M6,_, _,_,R,_, _,_,R,_, R,_,_,R, _,_,b7,_, _,_,R,_}); // 7
-    m_basslinePatterns.push_back({R,_,R,_, _,R,_,_, R,_,R,_, _,M6,_,_, R,_,R,_, _,R,_,_, R,_,R,_, _,b7,_,_}); // 8
-    m_basslinePatterns.push_back({_,R,_,R, _,_,R,_, _,R,_,R, _,_,M6,_, _,R,_,R, _,_,R,_, _,R,_,R, _,_,O,_}); // 9
-    m_basslinePatterns.push_back({R,_,_,R, R,_,R,_, _,_,R,_, R,_,_,R, R,_,_,R, R,_,R,_, _,_,R,_, R,_,_,b7}); // 10
+
+    m_basslinePatterns.push_back({_,_,R,_, R,_,_,_, _,_,_,_, _,_,b3,_, _,_,R,_, R,_,_,_, _,_,_,_, p5,_,_,_});
+
+    m_basslinePatterns.push_back({_,R,_,_, _,R,_,_, _,R,_,_, _,_,_,_, _,R,_,_, _,R,_,_, _,R,_,b7, _,_,_,_});
+
+    m_basslinePatterns.push_back({R,_,_,_, _,_,_,_, R,_,_,_, _,b3,_,_, R,_,_,_, _,_,_,_, p5,_,_,_, _,_,_,_});
+
+    m_basslinePatterns.push_back({_,_,R,_, _,_,M2,_, _,_,b3,_, _,_,M6,_, _,_,R,_, _,_,M2,_, _,_,b3,_, _,_,p5,_});
+
+    m_basslinePatterns.push_back({R,_,_,_, R,_,_,_, R,_,_,_, _,_,_,_, _,_,O,_, _,_,b7,_, _,_,p5,_, _,_,b3,_});
 
 
-    m_basslinePatterns.push_back({R,_,_,_, _,_,R,_, _,_,_,_, R,_,_,_, _,_,R,_, _,_,_,_, R,_,_,_, _,_,M6,_}); // 13
-    m_basslinePatterns.push_back({_,_,R,_, _,R,_,_, _,_,R,_, _,_,_,_, _,_,R,_, _,R,_,_, _,_,R,_, _,_,b7,_}); // 14
-    m_basslinePatterns.push_back({R,_,_,_, _,_,_,R, _,_,R,_, _,_,_,_, R,_,_,_, _,_,_,R, _,_,R,_, _,_,O,_}); // 15
-    m_basslinePatterns.push_back({_,R,_,_, _,_,R,_, _,R,_,_, _,_,M6,_, _,R,_,_, _,_,R,_, _,R,_,_, _,_,b7,_}); // 16
-    m_basslinePatterns.push_back({R,_,_,R, _,_,_,_, R,_,_,R, _,_,_,_, R,_,_,R, _,_,_,_, R,_,_,R, _,_,M6,_}); // 17
-    m_basslinePatterns.push_back({_,_,R,R, _,R,_,_, _,_,R,R, _,R,_,b7, _,_,R,R, _,R,_,_, _,_,R,R, _,R,_,O}); // 18
+    m_basslinePatterns.push_back({R,_,O,_, _,_,R,_, O,_,_,R, _,O,_,_, R,_,O,_, _,_,R,_, b7,_,_,R, _,b7,_,_});
+
+    m_basslinePatterns.push_back({_,_,R,_, O,_,_,_, _,_,R,_, b7,_,_,_, _,_,R,_, O,_,_,_, p5,_,_,_, b3,_,_,_});
+
+    m_basslinePatterns.push_back({R,_,R,_, O,_,_,_, R,_,R,_, b7,_,_,_, R,_,R,_, p5,_,_,_, R,_,R,_, b3,_,_,_});
+
+    m_basslinePatterns.push_back({R,_,_,_, _,_,O,_, R,_,_,_, _,_,b7,_, R,_,_,_, _,_,O,_, R,_,_,_, _,_,p5,_});
+
+    m_basslinePatterns.push_back({O,_,_,R, _,_,O,_, _,R,_,_, O,_,_,_, b7,_,_,R, _,_,p5,_, _,R,_,_, b3,_,_,_});
 
 
-    m_basslinePatterns.push_back({_,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_}); // 21 (your #1)
-    m_basslinePatterns.push_back({R,_,_,R, _,_,R,_, _,R,_,_, R,_,_,_, R,_,_,R, _,_,R,_, _,R,_,_, p5,_,_,_}); // 22
-    m_basslinePatterns.push_back({R,_,R,_, R,_,_,_, b3,_,b3,_, b3,_,_,_, p5,_,p5,_, p5,_,_,_, M6,_,M6,_, M6,_,_,_}); // 23
-    m_basslinePatterns.push_back({_,_,R,_, R,_,R,_, _,_,b3,_, b3,_,b3,_, _,_,p5,_, p5,_,p5,_, _,_,O,_, O,_,O,_}); // 24
-    m_basslinePatterns.push_back({R,_,_,_, R,_,_,_, _,R,_,_, R,_,_,_, R,_,_,_, R,_,_,_, _,O,_,_, p5,_,_,_}); // 25
+    m_basslinePatterns.push_back({R,_,_,_, M2,_,_,_, b3,_,_,_, p5,_,_,_, M6,_,_,_, b7,_,_,_, O,_,_,_, _,_,_,_});
 
+    m_basslinePatterns.push_back({_,_,O,_, _,_,b7,_, _,_,p5,_, _,_,b3,_, _,_,M2,_, _,_,R,_, _,_,_,_, _,_,_,_});
 
-    m_basslinePatterns.push_back({R,_,_,R, _,_,R,_, _,R,_,_, _,_,_,_, R,_,_,R, _,_,R,_, _,R,_,_, O,_,O,_}); // 26
-    m_basslinePatterns.push_back({_,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, _,_,R,_, O,_,O,_}); // 27
-    m_basslinePatterns.push_back({R,_,_,_, _,_,R,_, _,_,_,R, _,R,_,_, R,_,_,_, _,_,R,_, _,_,R,_, O,_,b7,_}); // 28
-    m_basslinePatterns.push_back({R,R,_,R, _,R,R,_, R,R,_,R, _,R,R,_, R,R,_,R, _,R,R,_, R,R,_,R, _,M6,M6,_}); // 29 (controlled roll)
-    m_basslinePatterns.push_back({R,_,_,R, _,O,_,_, R,_,_,R, _,O,_,_, R,_,_,R, _,O,_,_, R,_,_,R, _,M6,_,b7}); // 30 (octave jump but tasteful)
+    m_basslinePatterns.push_back({R,_,_,R, _,_,b3,_, R,_,_,R, _,_,p5,_, R,_,_,R, _,_,b7,_, O,_,b7,_, p5,_,b3,_});
+
+    m_basslinePatterns.push_back({R,_,_,_, R,_,p5,_, R,_,_,_, R,_,M6,_, R,_,_,_, R,_,b7,_, O,_,_,_, _,_,_,_});
+
+    m_basslinePatterns.push_back({_,b3,_,_, R,_,_,_, _,p5,_,_, b3,_,_,_, _,b7,_,_, p5,_,_,_, _,O,_,_, b7,_,_,_});
+
+    m_basslinePatterns.push_back({R,R,_,_, _,_,_,_, b3,b3,_,_, _,_,_,_, p5,p5,_,_, _,_,_,_, b7,b7,_,_, _,_,_,_});
+
+    m_basslinePatterns.push_back({R,_,b3,_, p5,_,_,_, R,_,b3,_, b7,_,_,_, R,_,b3,_, O,_,_,_, b7,_,p5,_, b3,_,_,_});
+
+    m_basslinePatterns.push_back({_,_,R,_, _,R,_,_, _,_,p5,_, _,p5,_,_, _,_,b7,_, _,b7,_,_, _,_,O,_, _,O,_,_});
+
+    m_basslinePatterns.push_back({R,_,_,_, _,R,_,_, b3,_,_,_, _,b3,_,_, p5,_,_,_, _,p5,_,_, b7,_,_,_, _,O,_,_});
+
+    m_basslinePatterns.push_back({_,_,R,R, _,_,_,_, _,_,b3,b3, _,_,_,_, _,_,p5,p5, _,_,_,_, _,_,b7,b7, _,_,_,_});
+
+    m_basslinePatterns.push_back({R,_,_,_, b3,_,_,_, p5,_,_,_, b7,_,_,_, O,_,_,_, b7,_,_,_, p5,_,_,_, b3,_,_,_});
+
+    m_basslinePatterns.push_back({R,_,_,_, p4,_,_,_, R,_,_,_, p5,_,_,_, R,_,_,_, M6,_,_,_, R,_,_,_, b7,_,_,_});
+
+    m_basslinePatterns.push_back({b3,_,R,_, _,_,_,_, b3,_,R,_, _,_,_,_, b3,_,R,_, _,_,_,_, p5,_,b3,_, _,_,_,_});
+
+    m_basslinePatterns.push_back({R,_,_,_, _,_,R,_, _,_,_,_, _,_,_,_, _,_,R,_, _,_,_,_, p5,_,M6,_, b7,_,O,_});
+
+    m_basslinePatterns.push_back({_,_,R,_, _,_,b3,_, R,_,_,_, _,_,p5,_, _,_,R,_, _,_,b7,_, O,_,_,_, p5,_,b3,_});
 }
 
 void HouseBeatGenerator::appendBasslineTrackToMMP(QDomDocument &doc, QDomElement &trackContainer, int songBars) {
