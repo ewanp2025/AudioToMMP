@@ -29,6 +29,10 @@ set(PROJECT_SOURCES
         housevocalstabs.h
 	vocalxpresstab.cpp
 	vocalxpresstab.h
+	housepianostabifier.h
+	housepianostabifier.cpp
+
+
 
         libs/qcustomplot.cpp
         libs/qcustomplot.h

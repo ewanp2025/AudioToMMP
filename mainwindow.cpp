@@ -13,6 +13,7 @@ extern "C" {
 #include "housebeatgenerator.h"
 #include "housevocalstabs.h"
 #include "vocalxpresstab.h"
+#include "housepianostabifier.h"
 
 void MainWindow::Biquad::setLPF(float fs, float f0, float Q) {
     float w0 = 2 * M_PI * f0 / fs;
@@ -986,8 +987,8 @@ void MainWindow::setupUI()
     // ========================================================
     // TAB 10: House Vocal Stabs
     // ========================================================
-    //m_vocalStabsTab = new HouseVocalStabsTab(this);
-    //m_mainTabs->addTab(m_vocalStabsTab, "Vocal Stabs WIP");
+    m_vocalStabsTab = new HouseVocalStabsTab(this);
+    m_mainTabs->addTab(m_vocalStabsTab, "Vocal Stabs WIP");
 
     // ========================================================
     // TAB 11: Text to Sing
@@ -995,6 +996,13 @@ void MainWindow::setupUI()
 
     //m_vocalTab = new VocalXpressTab(this);
     //m_mainTabs->addTab(m_vocalTab, "Text to sing WIP");
+
+    // ========================================================
+    // TAB 12: Stabifier
+    // ========================================================
+
+    m_pianoStabifier = new HousePianoStabifier();
+    m_mainTabs->addTab(m_pianoStabifier, "House Piano Stabifier");
 
 }
 

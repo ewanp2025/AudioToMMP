@@ -28,6 +28,7 @@
 class HouseBeatGenerator;
 class HouseVocalStabsTab;
 class VocalXpressTab;
+class HousePianoStabifier;
 
 class MainWindow : public QMainWindow
 {
@@ -328,6 +329,7 @@ private:
     HouseBeatGenerator *m_houseBeatGenerator;
     HouseVocalStabsTab *m_vocalStabsTab;
     VocalXpressTab *m_vocalTab;
+    HousePianoStabifier *m_pianoStabifier;
 };
 
 
