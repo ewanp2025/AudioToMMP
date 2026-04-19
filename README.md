@@ -19,6 +19,8 @@
 * **Visual Data:** Features detailed spectrogram and waveform visualisers to help you see exactly what you are extracting.
 * **Amiga Module Drum Extractor:** Extract drum patterns from Amiga modules and export to LMMS.
 * **303 Test:** Test to see if the code could generate a TB-303 style baseline with cutoff and resonance automation.
+* **House Beat Generator:** Create beats with shuffle off the 1/16 grid.
+* **House Piano Stabifier** Select two chords and it automatically generates a dynamic, 4-bar rhythmic LMMS pattern specifically styled for House music piano stabs.
   
 ### Current State
 Functional note detection, offset/BPM detection, and full `.mmp` generation is implemented. Chord detection (Template Matching and Peak Picking) is currently active but needs further refinement.
