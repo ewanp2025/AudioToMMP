@@ -291,7 +291,7 @@ void HousePianoStabifier::onGenerateStabsClicked()
         else if (!isAnchor && finalVoicing.size() > 2) {
             finalVoicing.erase(finalVoicing.begin());
             while (finalVoicing.size() > 1 && QRandomGenerator::global()->generateDouble() < voicingThinning) {
-                int dropIdx = QRandomGenerator::global()->bounded(finalVoicing.size() - 1);
+                int dropIdx = QRandomGenerator::global()->bounded(static_cast<int>(finalVoicing.size() - 1));
                 finalVoicing.erase(finalVoicing.begin() + dropIdx);
             }
         }
