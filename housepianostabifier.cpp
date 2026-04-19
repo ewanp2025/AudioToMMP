@@ -18,7 +18,7 @@ void HousePianoStabifier::setupUI()
 {
     QVBoxLayout *main = new QVBoxLayout(this);
 
-    QGroupBox *ctrlGroup = new QGroupBox("House Piano Stabifier 2.0");
+    QGroupBox *ctrlGroup = new QGroupBox("House Piano Stabifier 4.0");
     QVBoxLayout *ctrl = new QVBoxLayout(ctrlGroup);
 
 
@@ -29,6 +29,7 @@ void HousePianoStabifier::setupUI()
     QFormLayout *form1 = new QFormLayout(grpChord1);
     m_comboRoot1 = new QComboBox();
     m_comboRoot1->addItems({"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"});
+    m_comboRoot1->setCurrentText("C");
     m_comboType1 = new QComboBox();
     m_comboType1->addItems({"m7", "m9", "m11", "Maj7", "Maj9", "add9", "dom7", "m (triad)", "Maj (triad)"});
     m_comboType1->setCurrentText("m9");
@@ -58,35 +59,58 @@ void HousePianoStabifier::setupUI()
 
     QHBoxLayout *grooveLayout = new QHBoxLayout();
 
-    QVBoxLayout *slideLayout1 = new QVBoxLayout();
+
+    QVBoxLayout *col1 = new QVBoxLayout();
+    m_comboGenMode = new QComboBox();
+    m_comboGenMode->addItems({
+        "01. Dynamic Call & Response (Original)",
+        "02. Strict Off-Beat (90s )",
+        "03. The Push (Anticipation)",
+        "04. 3-over-4 Polyrhythm "
+    });
+    col1->addWidget(new QLabel("Rhythm Mode:"));
+    col1->addWidget(m_comboGenMode);
+
     m_sliderRhythmDensity = new QSlider(Qt::Horizontal);
     m_sliderRhythmDensity->setRange(0, 100);
-    m_sliderRhythmDensity->setValue(40);
-    slideLayout1->addWidget(new QLabel("Rhythm Density (More Triggers):"));
-    slideLayout1->addWidget(m_sliderRhythmDensity);
+    m_sliderRhythmDensity->setValue(25);
+    col1->addWidget(new QLabel("Rhythm Density (Triggers):"));
+    col1->addWidget(m_sliderRhythmDensity);
 
-    QVBoxLayout *slideLayout2 = new QVBoxLayout();
+
+    QVBoxLayout *col2 = new QVBoxLayout();
     m_sliderVoicingThinning = new QSlider(Qt::Horizontal);
     m_sliderVoicingThinning->setRange(0, 100);
     m_sliderVoicingThinning->setValue(60);
-    slideLayout2->addWidget(new QLabel("Voicing Thinning (Remove Notes):"));
-    slideLayout2->addWidget(m_sliderVoicingThinning);
+    col2->addWidget(new QLabel("Voicing Thinning (Intensity):"));
+    col2->addWidget(m_sliderVoicingThinning);
 
-    QVBoxLayout *optLayout = new QVBoxLayout();
+    m_sliderArticulation = new QSlider(Qt::Horizontal);
+    m_sliderArticulation->setRange(0, 100);
+    m_sliderArticulation->setValue(80);
+    col2->addWidget(new QLabel("Length Variance (Staccato/Tenuto):"));
+    col2->addWidget(m_sliderArticulation);
+
+
+    QVBoxLayout *col3 = new QVBoxLayout();
     m_chkTriadAnchors = new QCheckBox("Force Triads on Anchors");
     m_chkTriadAnchors->setChecked(true);
+
+    m_chkDynamicLengths = new QCheckBox("Enable Dynamic Lengths");
+    m_chkDynamicLengths->setChecked(true);
 
     m_comboGroove = new QComboBox();
     m_comboGroove->addItems({"Classic House", "UK Garage (Swung)"});
 
-    optLayout->addWidget(m_chkTriadAnchors);
-    optLayout->addWidget(m_comboGroove);
+    col3->addWidget(m_chkTriadAnchors);
+    col3->addWidget(m_chkDynamicLengths);
+    col3->addWidget(new QLabel("Swing:"));
+    col3->addWidget(m_comboGroove);
 
-    grooveLayout->addLayout(slideLayout1);
-    grooveLayout->addLayout(slideLayout2);
-    grooveLayout->addLayout(optLayout);
+    grooveLayout->addLayout(col1);
+    grooveLayout->addLayout(col2);
+    grooveLayout->addLayout(col3);
     ctrl->addLayout(grooveLayout);
-
 
     QHBoxLayout *top = new QHBoxLayout();
     m_btnLoad = new QPushButton("Load .xpt (Disabled for Gen)");
@@ -108,7 +132,6 @@ void HousePianoStabifier::setupUI()
     ctrl->addWidget(m_table);
 
     main->addWidget(ctrlGroup);
-
 
     connect(m_btnLoad, &QPushButton::clicked, this, &HousePianoStabifier::onLoadClicked);
     connect(m_btnGenerate, &QPushButton::clicked, this, &HousePianoStabifier::onGenerateStabsClicked);
@@ -143,14 +166,18 @@ void HousePianoStabifier::onGenerateStabsClicked()
 {
     m_notes.clear();
 
-    int root1 = 60 + m_comboRoot1->currentIndex(); // C4 baseline
+    int root1 = 60 + m_comboRoot1->currentIndex();
     int root2 = 60 + m_comboRoot2->currentIndex();
-    int pos1 = m_spinPos1->value() - 1; // Convert to 0-indexed steps
+    int pos1 = m_spinPos1->value() - 1;
     int pos2 = m_spinPos2->value() - 1;
 
+    int generationMode = m_comboGenMode->currentIndex();
     double rhythmDensity = m_sliderRhythmDensity->value() / 100.0;
     double voicingThinning = m_sliderVoicingThinning->value() / 100.0;
+    double articulationVar = m_sliderArticulation->value() / 100.0;
+
     bool forceTriads = m_chkTriadAnchors->isChecked();
+    bool dynamicLengths = m_chkDynamicLengths->isChecked();
     int grooveType = m_comboGroove->currentIndex();
 
     std::vector<int> chord1Notes = getChordNotes(root1, m_comboType1->currentText());
@@ -162,28 +189,49 @@ void HousePianoStabifier::onGenerateStabsClicked()
     for (int step = 0; step < 64; ++step) {
 
         int relStep = step % 32;
-        bool isAnchor = (relStep == pos1 || relStep == pos2);
-
         bool playStep = false;
+        bool isAnchor = false;
         int velocity = 100;
         int tickOffset = 0;
 
 
-        if (isAnchor) {
-            playStep = true;
-            velocity = 120 + QRandomGenerator::global()->bounded(8);
-        } else {
-            double chance = QRandomGenerator::global()->generateDouble();
-
-            if (step % 4 == 0) {
-                if (chance < (rhythmDensity * 1.5)) { playStep = true; velocity = 90 + QRandomGenerator::global()->bounded(20); }
+        if (generationMode == 0) {
+            isAnchor = (relStep == pos1 || relStep == pos2);
+            if (isAnchor) {
+                playStep = true;
+                velocity = 120 + QRandomGenerator::global()->bounded(8);
             } else {
-                if (chance < rhythmDensity) { playStep = true; velocity = 70 + QRandomGenerator::global()->bounded(30); }
+                double chance = QRandomGenerator::global()->generateDouble();
+                if (step % 4 == 0) {
+                    if (chance < (rhythmDensity * 1.5)) { playStep = true; velocity = 90 + QRandomGenerator::global()->bounded(20); }
+                } else {
+                    if (chance < rhythmDensity) { playStep = true; velocity = 70 + QRandomGenerator::global()->bounded(30); }
+                }
+            }
+        }
+        else if (generationMode == 1) {
+            if (step % 4 == 2) {
+                playStep = (QRandomGenerator::global()->generateDouble() < (rhythmDensity + 0.3));
+                velocity = 110 + QRandomGenerator::global()->bounded(10);
+                isAnchor = (relStep == 2 || relStep == 18);
+            }
+        }
+        else if (generationMode == 2) {
+            if (step % 4 == 3) {
+                playStep = (QRandomGenerator::global()->generateDouble() < (rhythmDensity + 0.3));
+                velocity = 105 + QRandomGenerator::global()->bounded(15);
+                isAnchor = (relStep == 15 || relStep == 31);
+            }
+        }
+        else if (generationMode == 3) {
+            if (step % 3 == 0) {
+                playStep = (QRandomGenerator::global()->generateDouble() < (rhythmDensity + 0.4));
+                velocity = 115 + QRandomGenerator::global()->bounded(10);
+                isAnchor = (step % 12 == 0);
             }
         }
 
         if (!playStep) continue;
-
 
         if (grooveType == 1 && step % 2 != 0) tickOffset = 3;
 
@@ -198,10 +246,7 @@ void HousePianoStabifier::onGenerateStabsClicked()
             finalVoicing = getTriad(activeChord);
         }
         else if (!isAnchor && finalVoicing.size() > 2) {
-
             finalVoicing.erase(finalVoicing.begin());
-
-
             while (finalVoicing.size() > 1 && QRandomGenerator::global()->generateDouble() < voicingThinning) {
                 int dropIdx = QRandomGenerator::global()->bounded(finalVoicing.size() - 1);
                 finalVoicing.erase(finalVoicing.begin() + dropIdx);
@@ -210,7 +255,26 @@ void HousePianoStabifier::onGenerateStabsClicked()
 
 
         int actualTick = (step * ticksPerStep) + tickOffset;
-        int len = isAnchor ? 12 + QRandomGenerator::global()->bounded(6) : 6 + QRandomGenerator::global()->bounded(8);
+        int len;
+
+        if (dynamicLengths) {
+
+            int baseLong = 12 + (articulationVar * 8);
+            int baseShort = 10 - (articulationVar * 6);
+
+            if (isAnchor) {
+                len = baseLong + QRandomGenerator::global()->bounded(4);
+            } else if (step % 2 != 0) {
+
+                len = (QRandomGenerator::global()->generateDouble() > 0.5) ? baseLong : baseShort;
+            } else {
+                len = baseShort + QRandomGenerator::global()->bounded(3);
+            }
+        } else {
+
+            len = isAnchor ? 12 + QRandomGenerator::global()->bounded(4) : 6 + QRandomGenerator::global()->bounded(4);
+        }
+
 
         for (int key : finalVoicing) {
             PianoNote n;
@@ -268,7 +332,7 @@ void HousePianoStabifier::saveXpt(const QString &filePath) {
     out << "<!DOCTYPE lmms-project>\n";
     out << "<lmms-project creator=\"LMMS\" type=\"pattern\" version=\"20\">\n";
     out << "  <head/>\n";
-    out << "  <pattern muted=\"0\" steps=\"64\" type=\"1\" pos=\"0\" name=\"House Stab 2.0\">\n"; // Set to 64 steps (4 bars)
+    out << "  <pattern muted=\"0\" steps=\"64\" type=\"1\" pos=\"0\" name=\"House Stab 4.0\">\n";
 
     for (const auto& n : m_notes) {
         out << "    <note key=\"" << n.key

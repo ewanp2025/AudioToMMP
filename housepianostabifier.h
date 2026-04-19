@@ -54,9 +54,13 @@ private:
     QComboBox *m_comboType2;
     QSpinBox *m_spinPos2;
 
+    QComboBox *m_comboGenMode;
     QSlider *m_sliderRhythmDensity;
     QSlider *m_sliderVoicingThinning;
+    QSlider *m_sliderArticulation;
+
     QCheckBox *m_chkTriadAnchors;
+    QCheckBox *m_chkDynamicLengths;
     QComboBox *m_comboGroove;
 
     QPushButton *m_btnLoad;
