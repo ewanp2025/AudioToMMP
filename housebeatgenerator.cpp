@@ -562,15 +562,18 @@ void HouseBeatGenerator::buildMMP(const QString &filePath)
 
         QDomElement instrTrack = doc.createElement("instrumenttrack");
         instrTrack.setAttribute("vol", QString::number(m_drums[d].defaultVol));
+        instrTrack.setAttribute("pan", "0");                    // ← FIXED: centre panning
+        // (you can still use m_drums[d].defaultPan if you want per-drum panning later)
 
         int drumVolId = baseVolId + d;
         if (m_automationLanes[d]->hasAutomation()) {
             instrTrack.setAttribute("id", QString::number(drumVolId));
         }
-
         drumTrack.appendChild(instrTrack);
 
-        QDomElement instr = doc.createElement("instrument"); instr.setAttribute("name", "xpressive"); instrTrack.appendChild(instr);
+        QDomElement instr = doc.createElement("instrument");
+        instr.setAttribute("name", "xpressive");
+        instrTrack.appendChild(instr);
 
         QString dynamicO1 = m_drums[d].xpressiveO1;
 
