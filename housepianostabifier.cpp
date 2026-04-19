@@ -25,55 +25,70 @@ void HousePianoStabifier::setupUI()
     QHBoxLayout *chordLayout = new QHBoxLayout();
 
 
-    QGroupBox *grpChord1 = new QGroupBox("Chord 1 (Anchor)");
-    QFormLayout *form1 = new QFormLayout(grpChord1);
+    chordLayout->addWidget(new QLabel("Root 1:"));
     m_comboRoot1 = new QComboBox();
     m_comboRoot1->addItems({"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"});
     m_comboRoot1->setCurrentText("C");
+    chordLayout->addWidget(m_comboRoot1);
+
     m_comboType1 = new QComboBox();
-    m_comboType1->addItems({"m7", "m9", "m11", "Maj7", "Maj9", "add9", "dom7", "m (triad)", "Maj (triad)"});
+    m_comboType1->addItems({"m7", "m9", "m11", "Maj7", "Maj9", "add9", "dom7", "dom9", "7sus4", "m (triad)", "Maj (triad)"});
     m_comboType1->setCurrentText("m9");
-    m_spinPos1 = new QSpinBox(); m_spinPos1->setRange(1, 32); m_spinPos1->setValue(1);
-    form1->addRow("Root:", m_comboRoot1);
-    form1->addRow("Type:", m_comboType1);
-    form1->addRow("Start Step:", m_spinPos1);
+    chordLayout->addWidget(m_comboType1);
+
+    chordLayout->addWidget(new QLabel("Pos 1:"));
+    m_spinPos1 = new QSpinBox();
+    m_spinPos1->setRange(1, 32);
+    m_spinPos1->setValue(1);
+    chordLayout->addWidget(m_spinPos1);
 
 
-    QGroupBox *grpChord2 = new QGroupBox("Chord 2 (Response)");
-    QFormLayout *form2 = new QFormLayout(grpChord2);
+    chordLayout->addSpacing(20);
+    chordLayout->addWidget(new QLabel("Root 2:"));
     m_comboRoot2 = new QComboBox();
     m_comboRoot2->addItems({"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"});
     m_comboRoot2->setCurrentText("F");
+    chordLayout->addWidget(m_comboRoot2);
+
     m_comboType2 = new QComboBox();
-    m_comboType2->addItems({"m7", "m9", "m11", "Maj7", "Maj9", "add9", "dom7", "m (triad)", "Maj (triad)"});
+    m_comboType2->addItems({"m7", "m9", "m11", "Maj7", "Maj9", "add9", "dom7", "dom9", "7sus4", "m (triad)", "Maj (triad)"});
     m_comboType2->setCurrentText("Maj9");
-    m_spinPos2 = new QSpinBox(); m_spinPos2->setRange(1, 32); m_spinPos2->setValue(26);
-    form2->addRow("Root:", m_comboRoot2);
-    form2->addRow("Type:", m_comboType2);
-    form2->addRow("Start Step:", m_spinPos2);
+    chordLayout->addWidget(m_comboType2);
 
-    chordLayout->addWidget(grpChord1);
-    chordLayout->addWidget(grpChord2);
+    chordLayout->addWidget(new QLabel("Pos 2:"));
+    m_spinPos2 = new QSpinBox();
+    m_spinPos2->setRange(1, 32);
+    m_spinPos2->setValue(26);
+    chordLayout->addWidget(m_spinPos2);
+
+
     ctrl->addLayout(chordLayout);
-
-
-    QHBoxLayout *grooveLayout = new QHBoxLayout();
-
-
-    QVBoxLayout *col1 = new QVBoxLayout();
     m_comboGenMode = new QComboBox();
     m_comboGenMode->addItems({
         "01. Dynamic Call & Response (Original)",
         "02. Strict Off-Beat (90s )",
         "03. The Push (Anticipation)",
-        "04. 3-over-4 Polyrhythm "
+        "04. 3-over-4 Polyrhythm ",
+        "05. Korg M1 Syncopation (Classic)"
     });
+
+    m_comboGroove = new QComboBox();
+    m_comboGroove->addItems({
+        "Classic House",
+        "UK Garage (Swung)",
+        "Jackin' House (Heavy Swing)",
+        "Tech House (Micro-Swing)"
+    });
+
+    QHBoxLayout *grooveLayout = new QHBoxLayout();
+    QVBoxLayout *col1 = new QVBoxLayout();
+
     col1->addWidget(new QLabel("Rhythm Mode:"));
     col1->addWidget(m_comboGenMode);
 
     m_sliderRhythmDensity = new QSlider(Qt::Horizontal);
     m_sliderRhythmDensity->setRange(0, 100);
-    m_sliderRhythmDensity->setValue(25);
+    m_sliderRhythmDensity->setValue(55);
     col1->addWidget(new QLabel("Rhythm Density (Triggers):"));
     col1->addWidget(m_sliderRhythmDensity);
 
@@ -81,7 +96,7 @@ void HousePianoStabifier::setupUI()
     QVBoxLayout *col2 = new QVBoxLayout();
     m_sliderVoicingThinning = new QSlider(Qt::Horizontal);
     m_sliderVoicingThinning->setRange(0, 100);
-    m_sliderVoicingThinning->setValue(60);
+    m_sliderVoicingThinning->setValue(80);
     col2->addWidget(new QLabel("Voicing Thinning (Intensity):"));
     col2->addWidget(m_sliderVoicingThinning);
 
@@ -99,9 +114,6 @@ void HousePianoStabifier::setupUI()
     m_chkDynamicLengths = new QCheckBox("Enable Dynamic Lengths");
     m_chkDynamicLengths->setChecked(true);
 
-    m_comboGroove = new QComboBox();
-    m_comboGroove->addItems({"Classic House", "UK Garage (Swung)"});
-
     col3->addWidget(m_chkTriadAnchors);
     col3->addWidget(m_chkDynamicLengths);
     col3->addWidget(new QLabel("Swing:"));
@@ -116,11 +128,16 @@ void HousePianoStabifier::setupUI()
     m_btnLoad = new QPushButton("Load .xpt (Disabled for Gen)");
     m_btnGenerate = new QPushButton("GENERATE 4-BAR STABS");
     m_btnGenerate->setStyleSheet("background-color:#c026d3; color:white; font-weight:bold; padding:12px; font-size:15px;");
+
+    m_btnHit = new QPushButton("TEST MODE ONLY");
+    m_btnHit->setStyleSheet("background-color:#22c55e; color:black; font-weight:bold; padding:14px; font-size:16px;");
+
     m_btnSave = new QPushButton("Save Stabbed .xpt");
     m_btnClear = new QPushButton("Clear");
 
     top->addWidget(m_btnLoad);
     top->addWidget(m_btnGenerate);
+    top->addWidget(m_btnHit);
     top->addWidget(m_btnSave);
     top->addWidget(m_btnClear);
     ctrl->addLayout(top);
@@ -135,6 +152,7 @@ void HousePianoStabifier::setupUI()
 
     connect(m_btnLoad, &QPushButton::clicked, this, &HousePianoStabifier::onLoadClicked);
     connect(m_btnGenerate, &QPushButton::clicked, this, &HousePianoStabifier::onGenerateStabsClicked);
+    connect(m_btnHit, &QPushButton::clicked, this, &HousePianoStabifier::onGenerateHitClicked);
     connect(m_btnSave, &QPushButton::clicked, this, &HousePianoStabifier::onSaveClicked);
     connect(m_btnClear, &QPushButton::clicked, this, &HousePianoStabifier::onClearClicked);
 }
@@ -150,6 +168,8 @@ std::vector<int> HousePianoStabifier::getChordNotes(int rootMidi, const QString&
     else if (type == "Maj9") notes.insert(notes.end(), {rootMidi + 4, rootMidi + 7, rootMidi + 11, rootMidi + 14});
     else if (type == "add9") notes.insert(notes.end(), {rootMidi + 4, rootMidi + 7, rootMidi + 14});
     else if (type == "dom7") notes.insert(notes.end(), {rootMidi + 4, rootMidi + 7, rootMidi + 10});
+    else if (type == "dom9") notes.insert(notes.end(), {rootMidi + 4, rootMidi + 7, rootMidi + 10, rootMidi + 14});
+    else if (type == "7sus4") notes.insert(notes.end(), {rootMidi + 5, rootMidi + 7, rootMidi + 10});
     else if (type == "m (triad)") notes.insert(notes.end(), {rootMidi + 3, rootMidi + 7});
     else if (type == "Maj (triad)") notes.insert(notes.end(), {rootMidi + 4, rootMidi + 7});
 
@@ -170,6 +190,16 @@ void HousePianoStabifier::onGenerateStabsClicked()
     int root2 = 60 + m_comboRoot2->currentIndex();
     int pos1 = m_spinPos1->value() - 1;
     int pos2 = m_spinPos2->value() - 1;
+
+    {
+        int diff = std::abs(root2 - root1) % 12;
+        std::vector<int> goodIntervals = {0, 3, 4, 5, 7, 8, 9};
+        if (std::find(goodIntervals.begin(), goodIntervals.end(), diff) == goodIntervals.end()) {
+            QMessageBox::warning(this, "Chord Compatibility Warning",
+                                 "The call & response chords you chose have roots that are not the most common for house piano stabs.\n\n"
+                                 "They may sound a bit dissonant or less 'hit-like', but I'm generating anyway!");
+        }
+    }
 
     int generationMode = m_comboGenMode->currentIndex();
     double rhythmDensity = m_sliderRhythmDensity->value() / 100.0;
@@ -230,10 +260,23 @@ void HousePianoStabifier::onGenerateStabsClicked()
                 isAnchor = (step % 12 == 0);
             }
         }
+        else if (generationMode == 4) {
+
+            int patternStep = step % 16;
+            if (patternStep == 0 || patternStep == 3 || patternStep == 8 || patternStep == 11) {
+                playStep = (QRandomGenerator::global()->generateDouble() < (rhythmDensity + 0.6));
+                velocity = 115 + QRandomGenerator::global()->bounded(10);
+                isAnchor = (patternStep == 0 || patternStep == 8);
+            }
+        }
 
         if (!playStep) continue;
 
-        if (grooveType == 1 && step % 2 != 0) tickOffset = 3;
+        if (step % 2 != 0) {
+            if (grooveType == 1) tickOffset = 3;
+            else if (grooveType == 2) tickOffset = 5;
+            else if (grooveType == 3) tickOffset = 1;
+        }
 
 
         std::vector<int> activeChord = (relStep >= pos2 && pos2 > pos1) ? chord2Notes : chord1Notes;
@@ -248,11 +291,10 @@ void HousePianoStabifier::onGenerateStabsClicked()
         else if (!isAnchor && finalVoicing.size() > 2) {
             finalVoicing.erase(finalVoicing.begin());
             while (finalVoicing.size() > 1 && QRandomGenerator::global()->generateDouble() < voicingThinning) {
-                int dropIdx = QRandomGenerator::global()->bounded(finalVoicing.size() - 1);
+                int dropIdx = QRandomGenerator::global()->bounded(static_cast<int>(finalVoicing.size() - 1));
                 finalVoicing.erase(finalVoicing.begin() + dropIdx);
             }
         }
-
 
         int actualTick = (step * ticksPerStep) + tickOffset;
         int len;
@@ -288,6 +330,34 @@ void HousePianoStabifier::onGenerateStabsClicked()
     }
 
     updateTable();
+}
+
+void HousePianoStabifier::onGenerateHitClicked()
+{
+
+    QString roots[12] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+    int r = QRandomGenerator::global()->bounded(12);
+    m_comboRoot1->setCurrentText(roots[r]);
+    m_comboRoot2->setCurrentText(roots[(r + 5) % 12]);
+
+    m_comboType1->setCurrentText("Maj9");
+    m_comboType2->setCurrentText("Maj9");
+
+    m_spinPos1->setValue(1);
+    m_spinPos2->setValue(26);
+
+    m_comboGenMode->setCurrentIndex(0);
+
+    m_chkTriadAnchors->setChecked(true);
+    m_chkDynamicLengths->setChecked(true);
+    m_comboGroove->setCurrentIndex(1);
+
+    onGenerateStabsClicked();
+
+    QMessageBox::information(this, "GENERATED!",
+                             "m9 → Maj9 call & response (perfect 4th apart) with UK Garage swing.\n\n"
+                             "Sliders for your own adjustments\n"
+                             "Click again for a brand new key.");
 }
 
 void HousePianoStabifier::onLoadClicked() {
