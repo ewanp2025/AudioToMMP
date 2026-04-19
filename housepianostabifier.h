@@ -32,6 +32,7 @@ public:
 private slots:
     void onLoadClicked();
     void onGenerateStabsClicked();
+    void onGenerateHitClicked();
     void onSaveClicked();
     void onClearClicked();
 
