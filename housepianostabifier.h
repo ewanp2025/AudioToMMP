@@ -68,6 +68,7 @@ private:
     QPushButton *m_btnGenerate;
     QPushButton *m_btnSave;
     QPushButton *m_btnClear;
+    QPushButton *m_btnHit;
     QTableWidget *m_table;
 };
 
